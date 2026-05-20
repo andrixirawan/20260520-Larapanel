@@ -59,7 +59,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
                     return $value;
                 }
 
-                return Storage::disk(config('uploads.user_avatars.disk', 'public'))->url($value);
+                $disk = config('uploads.user_avatars.disk', 'public');
+                $url = Storage::disk($disk)->url($value);
+
+                if ($disk === 'public') {
+                    return parse_url($url, PHP_URL_PATH) ?: '/storage/'.ltrim($value, '/');
+                }
+
+                return $url;
             },
         );
     }
