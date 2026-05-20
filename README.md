@@ -304,6 +304,20 @@ cp -a /home/shec5913/repositories/larapanel/storage/app/public/. /home/shec5913/
 
 Catatan: fallback copy bukan symlink. Jika ada upload baru, perlu copy ulang storage public ke folder subdomain.
 
+Agar upload baru langsung terlihat tanpa copy ulang, arahkan disk public Laravel ke folder storage subdomain:
+
+```env
+PUBLIC_DISK_ROOT=/home/shec5913/public_html/demo.shendro.cloud/storage
+PUBLIC_DISK_URL=https://demo.shendro.cloud/storage
+```
+
+Lalu clear config cache:
+
+```bash
+/opt/cpanel/ea-php85/root/usr/bin/php artisan config:clear
+/opt/cpanel/ea-php85/root/usr/bin/php artisan cache:clear
+```
+
 ---
 
 # F. Clear Cache Laravel
