@@ -1,6 +1,11 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+
+uses(RefreshDatabase::class);
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -50,6 +55,87 @@ test('email verification status is unchanged when the email address is unchanged
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
+test('avatar picture can be uploaded', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'avatar' => UploadedFile::fake()->image('avatar.jpg'),
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
+
+    $user->refresh();
+
+    expect($user->getRawOriginal('avatar'))
+        ->toStartWith("uploads/users/{$user->id}/avatars/")
+        ->and($user->avatar)->toStartWith('/storage/uploads/users/');
+
+    Storage::disk('public')->assertExists($user->getRawOriginal('avatar'));
+});
+
+test('avatar upload replaces the previous local avatar', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+    $oldAvatar = "uploads/users/{$user->id}/avatars/old-avatar.jpg";
+
+    Storage::disk('public')->put($oldAvatar, 'old avatar');
+    $user->forceFill(['avatar' => $oldAvatar])->save();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'avatar' => UploadedFile::fake()->image('new-avatar.png'),
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
+
+    $user->refresh();
+
+    Storage::disk('public')->assertMissing($oldAvatar);
+    Storage::disk('public')->assertExists($user->getRawOriginal('avatar'));
+});
+
+test('avatar picture can be removed', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+    $avatar = "uploads/users/{$user->id}/avatars/avatar.jpg";
+
+    Storage::disk('public')->put($avatar, 'avatar');
+    $user->forceFill(['avatar' => $avatar])->save();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'remove_avatar' => '1',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
+
+    $user->refresh();
+
+    expect($user->getRawOriginal('avatar'))->toBeNull();
+
+    Storage::disk('public')->assertMissing($avatar);
+});
+
 test('user can delete their account', function () {
     $user = User::factory()->create();
 
@@ -64,6 +150,29 @@ test('user can delete their account', function () {
         ->assertRedirect(route('home'));
 
     $this->assertGuest();
+    expect($user->fresh())->toBeNull();
+});
+
+test('deleting an account removes its local avatar', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+    $avatar = "uploads/users/{$user->id}/avatars/avatar.jpg";
+
+    Storage::disk('public')->put($avatar, 'avatar');
+    $user->forceFill(['avatar' => $avatar])->save();
+
+    $response = $this
+        ->actingAs($user)
+        ->delete(route('profile.destroy'), [
+            'password' => 'password',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('home'));
+
+    Storage::disk('public')->assertMissing($avatar);
     expect($user->fresh())->toBeNull();
 });
 

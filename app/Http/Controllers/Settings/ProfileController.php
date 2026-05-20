@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,13 +33,29 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        $validated = $request->safe()->except(['avatar', 'remove_avatar']);
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        $user->fill($validated);
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        if ($request->boolean('remove_avatar') || $request->hasFile('avatar')) {
+            $this->deleteLocalAvatar($user);
+
+            $user->avatar = null;
+        }
+
+        if ($request->hasFile('avatar')) {
+            $user->avatar = $request->file('avatar')->store(
+                $this->avatarDirectory($user),
+                ['disk' => config('uploads.user_avatars.disk', 'public')],
+            );
+        }
+
+        $user->save();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Profile updated.')]);
 
@@ -52,11 +71,50 @@ class ProfileController extends Controller
 
         Auth::logout();
 
+        $this->deleteLocalAvatar($user);
+
         $user->delete();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    private function avatarDirectory(User $user): string
+    {
+        return str_replace(
+            '{user}',
+            (string) $user->id,
+            config('uploads.user_avatars.directory', 'uploads/users/{user}/avatars'),
+        );
+    }
+
+    private function deleteLocalAvatar(User $user): void
+    {
+        $path = $this->localAvatarPath($user->getRawOriginal('avatar'));
+
+        if ($path) {
+            Storage::disk(config('uploads.user_avatars.disk', 'public'))->delete($path);
+        }
+    }
+
+    private function localAvatarPath(?string $avatar): ?string
+    {
+        if (! $avatar) {
+            return null;
+        }
+
+        $storagePath = parse_url(Storage::disk(config('uploads.user_avatars.disk', 'public'))->url(''), PHP_URL_PATH);
+        $storagePrefix = '/'.trim($storagePath ?: '/storage', '/');
+        $avatarPath = parse_url($avatar, PHP_URL_PATH) ?: $avatar;
+
+        if (Str::startsWith($avatarPath, $storagePrefix.'/')) {
+            $avatar = Str::after($avatarPath, $storagePrefix.'/');
+        }
+
+        $avatar = ltrim($avatar, '/');
+
+        return Str::startsWith($avatar, 'uploads/') ? $avatar : null;
     }
 }
