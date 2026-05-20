@@ -556,55 +556,75 @@ tail -n 100 /home/shec5913/public_html/demo.shendro.cloud/error_log
 
 # M. Command Deploy Final Sekali Jalan
 
-Gunakan ini jika sudah yakin dan ingin deploy cepat.
+Copy satu blok ini ke Terminal cPanel. Perintah ini mulai dari `git pull` sampai cache, migration, public copy, storage folder, `.htaccess`, `index.php`, permission, dan debug route check.
 
 ```bash
-cd /home/shec5913/repositories/larapanel
-```
+set -e
 
-```bash
-git pull origin main
-```
+PROJECT_DIR="/home/shec5913/repositories/larapanel"
+PUBLIC_DIR="/home/shec5913/public_html/demo.shendro.cloud"
+PHP_CLI="/opt/cpanel/ea-php85/root/usr/bin/php"
+BRANCH="main"
 
-```bash
-/opt/cpanel/ea-php85/root/usr/bin/php composer.phar install --no-dev --optimize-autoloader --no-scripts
-```
+echo "==> Masuk project"
+cd "$PROJECT_DIR"
 
-```bash
+echo "==> Git pull"
+git pull origin "$BRANCH"
+
+echo "==> Composer install"
+if command -v composer >/dev/null 2>&1; then
+  composer install --no-dev --optimize-autoloader --no-interaction
+elif [ -f composer.phar ]; then
+  "$PHP_CLI" composer.phar install --no-dev --optimize-autoloader --no-interaction
+else
+  echo "Composer tidak ditemukan. Upload composer.phar ke $PROJECT_DIR atau aktifkan composer di cPanel." >&2
+  exit 1
+fi
+
+echo "==> Pastikan folder public storage untuk upload avatar"
+mkdir -p "$PUBLIC_DIR/storage"
+
+echo "==> Pastikan PUBLIC_DISK_ROOT dan PUBLIC_DISK_URL ada di .env"
+if grep -q '^PUBLIC_DISK_ROOT=' .env; then
+  sed -i 's#^PUBLIC_DISK_ROOT=.*#PUBLIC_DISK_ROOT=/home/shec5913/public_html/demo.shendro.cloud/storage#' .env
+else
+  printf '\nPUBLIC_DISK_ROOT=/home/shec5913/public_html/demo.shendro.cloud/storage\n' >> .env
+fi
+
+if grep -q '^PUBLIC_DISK_URL=' .env; then
+  sed -i 's#^PUBLIC_DISK_URL=.*#PUBLIC_DISK_URL=https://demo.shendro.cloud/storage#' .env
+else
+  printf 'PUBLIC_DISK_URL=https://demo.shendro.cloud/storage\n' >> .env
+fi
+
+echo "==> Bersihkan cache lama sebelum package discover"
 rm -f bootstrap/cache/config.php bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/routes-v7.php bootstrap/cache/events.php
-```
 
-```bash
-/opt/cpanel/ea-php85/root/usr/bin/php artisan package:discover --ansi
-```
+echo "==> Laravel package discover"
+"$PHP_CLI" artisan package:discover --ansi
 
-```bash
-/opt/cpanel/ea-php85/root/usr/bin/php artisan migrate --force
-```
+echo "==> Migration"
+"$PHP_CLI" artisan migrate --force
 
-```bash
-[ -L /home/shec5913/repositories/larapanel/public/storage ] || ln -s /home/shec5913/repositories/larapanel/storage/app/public /home/shec5913/repositories/larapanel/public/storage
-```
+echo "==> Clear cache"
+"$PHP_CLI" artisan optimize:clear
+"$PHP_CLI" artisan config:clear
+"$PHP_CLI" artisan cache:clear
+"$PHP_CLI" artisan view:clear
+"$PHP_CLI" artisan route:clear
 
-```bash
-/opt/cpanel/ea-php85/root/usr/bin/php artisan config:clear
-/opt/cpanel/ea-php85/root/usr/bin/php artisan cache:clear
-/opt/cpanel/ea-php85/root/usr/bin/php artisan view:clear
-/opt/cpanel/ea-php85/root/usr/bin/php artisan route:clear
-```
+echo "==> Cache production"
+"$PHP_CLI" artisan config:cache
+"$PHP_CLI" artisan route:cache
+"$PHP_CLI" artisan view:cache
 
-```bash
-/opt/cpanel/ea-php85/root/usr/bin/php artisan config:cache
-/opt/cpanel/ea-php85/root/usr/bin/php artisan route:cache
-/opt/cpanel/ea-php85/root/usr/bin/php artisan view:cache
-```
+echo "==> Copy public folder ke subdomain"
+mkdir -p "$PUBLIC_DIR"
+cp -a "$PROJECT_DIR/public/." "$PUBLIC_DIR/"
 
-```bash
-cp -a /home/shec5913/repositories/larapanel/public/. /home/shec5913/public_html/demo.shendro.cloud/
-```
-
-```bash
-cat > /home/shec5913/public_html/demo.shendro.cloud/.htaccess <<'EOF'
+echo "==> Tulis ulang .htaccess"
+cat > "$PUBLIC_DIR/.htaccess" <<'EOF'
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
@@ -638,10 +658,9 @@ cat > /home/shec5913/public_html/demo.shendro.cloud/.htaccess <<'EOF'
 </IfModule>
 # php -- END cPanel-generated handler, do not edit
 EOF
-```
 
-```bash
-cat > /home/shec5913/public_html/demo.shendro.cloud/index.php <<'PHP'
+echo "==> Tulis ulang index.php"
+cat > "$PUBLIC_DIR/index.php" <<'PHP'
 <?php
 
 use Illuminate\Foundation\Application;
@@ -663,14 +682,21 @@ $app = require_once __DIR__.'/../../repositories/larapanel/bootstrap/app.php';
 
 $app->handleRequest(Request::capture());
 PHP
-```
 
-```bash
-chmod -R 755 /home/shec5913/repositories/larapanel/storage
-chmod -R 755 /home/shec5913/repositories/larapanel/bootstrap/cache
-chmod 755 /home/shec5913/public_html/demo.shendro.cloud
-chmod 644 /home/shec5913/public_html/demo.shendro.cloud/.htaccess
-chmod 644 /home/shec5913/public_html/demo.shendro.cloud/index.php
+echo "==> Permission"
+chmod -R 755 "$PROJECT_DIR/storage"
+chmod -R 755 "$PROJECT_DIR/bootstrap/cache"
+chmod -R 755 "$PUBLIC_DIR/storage"
+chmod 755 "$PUBLIC_DIR"
+chmod 644 "$PUBLIC_DIR/.htaccess"
+chmod 644 "$PUBLIC_DIR/index.php"
+
+echo "==> Cek hasil config penting"
+"$PHP_CLI" artisan tinker --execute='dump(config("app.url")); dump(config("filesystems.disks.public.root")); dump(config("filesystems.disks.public.url"));'
+
+echo "==> Selesai deploy"
+echo "Buka: https://demo.shendro.cloud"
+echo "Jika debug avatar masih dibutuhkan: https://demo.shendro.cloud/debug/avatar-storage"
 ```
 
 ---
