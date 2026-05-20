@@ -49,9 +49,12 @@ class ProfileController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            $user->avatar = $request->file('avatar')->store(
+            $avatar = $request->file('avatar');
+
+            $user->avatar = $avatar->storeAs(
                 $this->avatarDirectory($user),
-                ['disk' => config('uploads.user_avatars.disk', 'public')],
+                $avatar->hashName(),
+                ['disk' => $this->avatarDisk()],
             );
         }
 
@@ -92,20 +95,25 @@ class ProfileController extends Controller
 
     private function deleteLocalAvatar(User $user): void
     {
-        $path = $this->localAvatarPath($user->getRawOriginal('avatar'));
+        $path = $this->localAvatarPath($user, $user->getRawOriginal('avatar'));
 
         if ($path) {
-            Storage::disk(config('uploads.user_avatars.disk', 'public'))->delete($path);
+            Storage::disk($this->avatarDisk())->delete($path);
         }
     }
 
-    private function localAvatarPath(?string $avatar): ?string
+    private function avatarDisk(): string
+    {
+        return config('uploads.user_avatars.disk', 'public');
+    }
+
+    private function localAvatarPath(User $user, ?string $avatar): ?string
     {
         if (! $avatar) {
             return null;
         }
 
-        $storagePath = parse_url(Storage::disk(config('uploads.user_avatars.disk', 'public'))->url(''), PHP_URL_PATH);
+        $storagePath = parse_url(Storage::disk($this->avatarDisk())->url(''), PHP_URL_PATH);
         $storagePrefix = '/'.trim($storagePath ?: '/storage', '/');
         $avatarPath = parse_url($avatar, PHP_URL_PATH) ?: $avatar;
 
@@ -114,7 +122,8 @@ class ProfileController extends Controller
         }
 
         $avatar = ltrim($avatar, '/');
+        $avatarDirectory = trim($this->avatarDirectory($user), '/').'/';
 
-        return Str::startsWith($avatar, 'uploads/') ? $avatar : null;
+        return Str::startsWith($avatar, $avatarDirectory) ? $avatar : null;
     }
 }

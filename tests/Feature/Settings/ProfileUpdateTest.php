@@ -81,6 +81,34 @@ test('avatar picture can be uploaded', function () {
     Storage::disk('public')->assertExists($user->getRawOriginal('avatar'));
 });
 
+test('uploaded avatar filename is hashed and does not use the original filename', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'avatar' => UploadedFile::fake()->image('plain-user-avatar.jpg'),
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
+
+    $path = $user->refresh()->getRawOriginal('avatar');
+    $filename = pathinfo($path, PATHINFO_FILENAME);
+
+    expect(basename($path))
+        ->not->toBe('plain-user-avatar.jpg')
+        ->not->toContain('plain-user-avatar')
+        ->and(strlen($filename))->toBeGreaterThanOrEqual(32);
+
+    Storage::disk('public')->assertExists($path);
+});
+
 test('avatar upload replaces the previous local avatar', function () {
     Storage::fake('public');
 
