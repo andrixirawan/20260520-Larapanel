@@ -573,10 +573,10 @@ echo "==> Git pull"
 git pull origin "$BRANCH"
 
 echo "==> Composer install"
-if command -v composer >/dev/null 2>&1; then
-  composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-elif [ -f composer.phar ]; then
+if [ -f composer.phar ]; then
   "$PHP_CLI" composer.phar install --no-dev --optimize-autoloader --no-interaction --no-scripts
+elif command -v composer >/dev/null 2>&1; then
+  composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 else
   echo "Composer tidak ditemukan. Upload composer.phar ke $PROJECT_DIR atau aktifkan composer di cPanel." >&2
   exit 1
