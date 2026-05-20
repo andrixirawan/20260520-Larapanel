@@ -109,6 +109,18 @@ test('uploaded avatar filename is hashed and does not use the original filename'
     Storage::disk('public')->assertExists($path);
 });
 
+test('uploaded avatar url uses the configured public disk url', function () {
+    config(['filesystems.disks.public.url' => 'https://demo.example.test/storage']);
+
+    $user = User::factory()->create([
+        'avatar' => 'uploads/users/1/avatars/avatar.jpg',
+    ]);
+
+    expect($user->avatar)
+        ->toStartWith('https://demo.example.test/storage/uploads/users/1/avatars/avatar.jpg')
+        ->toContain('?v=');
+});
+
 test('avatar upload replaces the previous local avatar', function () {
     Storage::fake('public');
 

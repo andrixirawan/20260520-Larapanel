@@ -71,6 +71,10 @@ export default function Profile({
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                                     <Avatar className="size-16">
                                         <AvatarImage
+                                            key={
+                                                displayedAvatar ??
+                                                'avatar-fallback'
+                                            }
                                             src={displayedAvatar}
                                             alt={auth.user.name}
                                         />
