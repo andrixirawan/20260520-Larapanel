@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -51,11 +52,19 @@ class ProfileController extends Controller
         if ($request->hasFile('avatar')) {
             $avatar = $request->file('avatar');
 
-            $user->avatar = $avatar->storeAs(
+            $storedAvatar = $avatar->storeAs(
                 $this->avatarDirectory($user),
                 $avatar->hashName(),
                 ['disk' => $this->avatarDisk()],
             );
+
+            if (! is_string($storedAvatar)) {
+                throw ValidationException::withMessages([
+                    'avatar' => __('The avatar could not be uploaded. Please check the storage path and permissions.'),
+                ]);
+            }
+
+            $user->avatar = $storedAvatar;
         }
 
         $user->save();

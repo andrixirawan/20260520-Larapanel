@@ -1,6 +1,7 @@
 import { Form } from '@inertiajs/react';
 import { Eye, EyeOff, LockKeyhole, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import AlertError from '@/components/alert-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -83,7 +84,10 @@ export default function TwoFactorRecoveryCodes({
                         <Form
                             {...regenerateRecoveryCodes.form()}
                             options={{ preserveScroll: true }}
-                            onSuccess={fetchRecoveryCodes}
+                            onSuccess={() => {
+                                toast.success('Recovery codes regenerated.');
+                                fetchRecoveryCodes();
+                            }}
                         >
                             {({ processing }) => (
                                 <Button

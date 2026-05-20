@@ -1,6 +1,7 @@
 import { Form } from '@inertiajs/react';
 import { ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import Heading from '@/components/heading';
 import TwoFactorRecoveryCodes from '@/components/two-factor-recovery-codes';
 import TwoFactorSetupModal from '@/components/two-factor-setup-modal';
@@ -60,7 +61,14 @@ export default function ManageTwoFactor(props: Props) {
                     </p>
 
                     <div className="relative inline">
-                        <Form {...disable.form()}>
+                        <Form
+                            {...disable.form()}
+                            onSuccess={() =>
+                                toast.success(
+                                    'Two-factor authentication disabled.',
+                                )
+                            }
+                        >
                             {({ processing }) => (
                                 <Button
                                     variant="destructive"
@@ -97,7 +105,10 @@ export default function ManageTwoFactor(props: Props) {
                         ) : (
                             <Form
                                 {...enable.form()}
-                                onSuccess={() => setShowSetupModal(true)}
+                                onSuccess={() => {
+                                    toast.success('Two-factor setup started.');
+                                    setShowSetupModal(true);
+                                }}
                             >
                                 {({ processing }) => (
                                     <Button type="submit" disabled={processing}>

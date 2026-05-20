@@ -2,6 +2,7 @@ import { Form } from '@inertiajs/react';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { Check, Copy, ScanLine } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import AlertError from '@/components/alert-error';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -157,7 +158,10 @@ function TwoFactorVerificationStep({
     return (
         <Form
             {...confirm.form()}
-            onSuccess={() => onClose()}
+            onSuccess={() => {
+                toast.success('Two-factor authentication enabled.');
+                onClose();
+            }}
             resetOnError
             resetOnSuccess
         >
