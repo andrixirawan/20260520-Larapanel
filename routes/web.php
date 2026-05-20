@@ -5,7 +5,9 @@ use App\Http\Controllers\Debug\AvatarStorageController;
 use App\Http\Controllers\PostController;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+Route::get('/', [PostController::class, 'home'])->name('home');
+Route::get('posts/{post}/cover', [PostController::class, 'cover'])->name('posts.cover');
+Route::get('p/{post:slug}', [PostController::class, 'publicShow'])->name('public.posts.show');
 
 Route::middleware('guest')->group(function () {
     Route::get('auth/google', [GoogleOAuthController::class, 'redirect'])
@@ -18,7 +20,6 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 
-    Route::get('posts/{post}/cover', [PostController::class, 'cover'])->name('posts.cover');
     Route::resource('posts', PostController::class);
 });
 

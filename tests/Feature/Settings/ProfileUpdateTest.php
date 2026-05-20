@@ -76,7 +76,7 @@ test('avatar picture can be uploaded', function () {
 
     expect($user->getRawOriginal('avatar'))
         ->toStartWith("uploads/users/{$user->id}/avatars/")
-        ->and($user->avatar)->toStartWith('/storage/uploads/users/');
+        ->and($user->avatar)->toStartWith("/users/{$user->id}/avatar?v=");
 
     Storage::disk('public')->assertExists($user->getRawOriginal('avatar'));
 });
@@ -109,16 +109,26 @@ test('uploaded avatar filename is hashed and does not use the original filename'
     Storage::disk('public')->assertExists($path);
 });
 
-test('uploaded avatar url uses the configured public disk url', function () {
-    config(['filesystems.disks.public.url' => 'https://demo.example.test/storage']);
-
+test('uploaded avatar url uses the laravel avatar response route', function () {
     $user = User::factory()->create([
         'avatar' => 'uploads/users/1/avatars/avatar.jpg',
     ]);
 
     expect($user->avatar)
-        ->toStartWith('https://demo.example.test/storage/uploads/users/1/avatars/avatar.jpg')
+        ->toStartWith("/users/{$user->id}/avatar")
         ->toContain('?v=');
+});
+
+test('avatar picture is served through laravel instead of public storage symlink', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+    $avatar = "uploads/users/{$user->id}/avatars/avatar.jpg";
+
+    Storage::disk('public')->put($avatar, UploadedFile::fake()->image('avatar.jpg')->getContent());
+    $user->forceFill(['avatar' => $avatar])->save();
+
+    $this->get(route('profile.avatar', $user))->assertOk();
 });
 
 test('avatar upload replaces the previous local avatar', function () {

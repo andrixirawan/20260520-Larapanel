@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -16,13 +17,28 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PostController extends Controller
 {
-    public function index(): Response
+    public function home(Request $request): Response
+    {
+        return Inertia::render('welcome', [
+            'posts' => $this->filteredPosts($request),
+            'filters' => $this->postFilters($request),
+            'sortOptions' => $this->sortOptions(),
+        ]);
+    }
+
+    public function publicShow(Post $post): Response
+    {
+        return Inertia::render('public-posts/show', [
+            'post' => $post,
+        ]);
+    }
+
+    public function index(Request $request): Response
     {
         return Inertia::render('posts/index', [
-            'posts' => Post::query()
-                ->latest()
-                ->paginate(10)
-                ->withQueryString(),
+            'posts' => $this->filteredPosts($request),
+            'filters' => $this->postFilters($request),
+            'sortOptions' => $this->sortOptions(),
         ]);
     }
 
@@ -120,6 +136,70 @@ class PostController extends Controller
             'author' => ['required', 'string', 'max:255'],
             'remove_cover' => ['nullable', 'boolean'],
         ]);
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, Post>
+     */
+    private function filteredPosts(Request $request): LengthAwarePaginator
+    {
+        $filters = $this->postFilters($request);
+
+        return Post::query()
+            ->when($filters['search'], function ($query, string $search) {
+                $query->where(function ($query) use ($search) {
+                    $query
+                        ->where('title', 'like', "%{$search}%")
+                        ->orWhere('slug', 'like', "%{$search}%")
+                        ->orWhere('author', 'like', "%{$search}%")
+                        ->orWhere('body', 'like', "%{$search}%");
+                });
+            })
+            ->when($filters['author'], fn ($query, string $author) => $query->where('author', 'like', "%{$author}%"))
+            ->when(
+                $filters['sort'] === 'oldest',
+                fn ($query) => $query->oldest(),
+                fn ($query) => $query->when(
+                    $filters['sort'] === 'title',
+                    fn ($query) => $query->orderBy('title')->orderByDesc('id'),
+                    fn ($query) => $query->when(
+                        $filters['sort'] === 'author',
+                        fn ($query) => $query->orderBy('author')->orderByDesc('id'),
+                        fn ($query) => $query->latest(),
+                    ),
+                ),
+            )
+            ->paginate($filters['per_page'])
+            ->withQueryString();
+    }
+
+    /**
+     * @return array{search: string, author: string, sort: string, per_page: int}
+     */
+    private function postFilters(Request $request): array
+    {
+        $sort = $request->string('sort')->toString();
+        $perPage = $request->integer('per_page', 10);
+
+        return [
+            'search' => trim($request->string('search')->toString()),
+            'author' => trim($request->string('author')->toString()),
+            'sort' => array_key_exists($sort, $this->sortOptions()) ? $sort : 'latest',
+            'per_page' => in_array($perPage, [5, 10, 15, 25], true) ? $perPage : 10,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function sortOptions(): array
+    {
+        return [
+            'latest' => __('Newest first'),
+            'oldest' => __('Oldest first'),
+            'title' => __('Title A-Z'),
+            'author' => __('Author A-Z'),
+        ];
     }
 
     private function uniqueSlug(string $value, ?Post $post = null): string

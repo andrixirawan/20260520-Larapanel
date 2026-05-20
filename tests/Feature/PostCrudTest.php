@@ -5,6 +5,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -51,14 +52,75 @@ test('post can be created with a cover image', function () {
 test('post cover is served through laravel instead of public storage symlink', function () {
     Storage::fake('public');
 
-    $user = User::factory()->create();
     $cover = 'uploads/posts/covers/cover.jpg';
     Storage::disk('public')->put($cover, UploadedFile::fake()->image('cover.jpg')->getContent());
     $post = Post::factory()->create(['cover' => $cover]);
 
-    $this->actingAs($user)
-        ->get(route('posts.cover', $post))
+    $this->get(route('posts.cover', $post))
         ->assertOk();
+});
+
+test('home renders a public paginated post list with filters', function () {
+    Post::factory()->create([
+        'title' => 'Alpha public note',
+        'author' => 'Rani',
+        'body' => 'Visible public body',
+    ]);
+    Post::factory()->create([
+        'title' => 'Beta private draft',
+        'author' => 'Budi',
+        'body' => 'Different content',
+    ]);
+
+    $this->get(route('home', [
+        'search' => 'Alpha',
+        'author' => 'Rani',
+        'sort' => 'title',
+        'per_page' => 5,
+    ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('welcome')
+            ->where('filters.search', 'Alpha')
+            ->where('filters.author', 'Rani')
+            ->where('filters.sort', 'title')
+            ->where('filters.per_page', 5)
+            ->where('posts.data.0.title', 'Alpha public note')
+            ->where('posts.total', 1)
+        );
+});
+
+test('posts can be opened from a public slug url', function () {
+    $post = Post::factory()->create();
+
+    $this->get(route('public.posts.show', $post))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('public-posts/show')
+            ->where('post.id', $post->id)
+        );
+});
+
+test('authenticated posts index supports the same filters', function () {
+    $user = User::factory()->create();
+    Post::factory()->create(['title' => 'Gamma dashboard post', 'author' => 'Sari']);
+    Post::factory()->create(['title' => 'Delta dashboard post', 'author' => 'Joko']);
+
+    $this->actingAs($user)
+        ->get(route('posts.index', [
+            'search' => 'Gamma',
+            'author' => 'Sari',
+            'sort' => 'latest',
+            'per_page' => 5,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('posts/index')
+            ->where('filters.search', 'Gamma')
+            ->where('filters.author', 'Sari')
+            ->where('posts.data.0.title', 'Gamma dashboard post')
+            ->where('posts.total', 1)
+        );
 });
 
 test('post cover upload replaces the previous cover', function () {

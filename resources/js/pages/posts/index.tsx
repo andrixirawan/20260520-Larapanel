@@ -1,8 +1,9 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Eye, ImageIcon, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Eye, ImageIcon, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Table,
     TableBody,
@@ -11,9 +12,21 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import type { Paginated, Post } from './types';
+import type { Paginated, Post, PostFilters } from './types';
 
-export default function PostsIndex({ posts }: { posts: Paginated<Post> }) {
+export default function PostsIndex({
+    posts,
+    filters,
+    sortOptions,
+}: {
+    posts: Paginated<Post>;
+    filters: PostFilters;
+    sortOptions: Record<string, string>;
+}) {
+    const hasFilters = Boolean(
+        filters.search || filters.author || filters.sort !== 'latest',
+    );
+
     return (
         <>
             <Head title="Posts" />
@@ -32,6 +45,63 @@ export default function PostsIndex({ posts }: { posts: Paginated<Post> }) {
                         </Link>
                     </Button>
                 </div>
+
+                <form
+                    action="/posts"
+                    method="get"
+                    className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_160px_120px_auto]"
+                >
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            name="search"
+                            defaultValue={filters.search}
+                            placeholder="Search posts"
+                            className="pl-9"
+                        />
+                    </div>
+
+                    <Input
+                        name="author"
+                        defaultValue={filters.author}
+                        placeholder="Filter author"
+                    />
+
+                    <select
+                        name="sort"
+                        defaultValue={filters.sort}
+                        className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    >
+                        {Object.entries(sortOptions).map(([value, label]) => (
+                            <option key={value} value={value}>
+                                {label}
+                            </option>
+                        ))}
+                    </select>
+
+                    <select
+                        name="per_page"
+                        defaultValue={filters.per_page}
+                        className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    >
+                        {[5, 10, 15, 25].map((value) => (
+                            <option key={value} value={value}>
+                                {value} / page
+                            </option>
+                        ))}
+                    </select>
+
+                    <div className="flex gap-2">
+                        <Button type="submit" size="sm">
+                            Apply
+                        </Button>
+                        {hasFilters && (
+                            <Button asChild variant="ghost" size="sm">
+                                <Link href="/posts">Reset</Link>
+                            </Button>
+                        )}
+                    </div>
+                </form>
 
                 <div className="overflow-hidden rounded-lg border">
                     <Table>

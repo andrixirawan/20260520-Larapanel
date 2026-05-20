@@ -21,3 +21,10 @@ export type Paginated<T> = {
     to: number | null;
     total: number;
 };
+
+export type PostFilters = {
+    search: string;
+    author: string;
+    sort: string;
+    per_page: number;
+};

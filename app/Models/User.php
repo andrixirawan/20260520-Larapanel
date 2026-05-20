@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -56,15 +55,10 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
                 }
 
                 if (Str::startsWith($value, ['http://', 'https://'])) {
-                    return $this->versionAvatarUrl($value);
+                    return $value;
                 }
 
-                $disk = config('uploads.user_avatars.disk', 'public');
-                $path = Str::startsWith($value, '/storage/')
-                    ? Str::after($value, '/storage/')
-                    : $value;
-
-                return $this->versionAvatarUrl(Storage::disk($disk)->url($path));
+                return $this->versionAvatarUrl(route('profile.avatar', $this, false));
             },
         );
     }
@@ -81,7 +75,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     {
         $version = $this->updated_at?->getTimestamp();
 
-        if (! $version || ! Str::contains($url, '/storage/')) {
+        if (! $version) {
             return $url;
         }
 

@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProfileController extends Controller
 {
@@ -50,21 +51,7 @@ class ProfileController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            $avatar = $request->file('avatar');
-
-            $storedAvatar = $avatar->storeAs(
-                $this->avatarDirectory($user),
-                $avatar->hashName(),
-                ['disk' => $this->avatarDisk()],
-            );
-
-            if (! is_string($storedAvatar)) {
-                throw ValidationException::withMessages([
-                    'avatar' => __('The avatar could not be uploaded. Please check the storage path and permissions.'),
-                ]);
-            }
-
-            $user->avatar = $storedAvatar;
+            $user->avatar = $this->storeAvatar($request, $user);
         }
 
         $user->save();
@@ -72,6 +59,15 @@ class ProfileController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Profile updated.')]);
 
         return to_route('profile.edit');
+    }
+
+    public function avatar(User $user): StreamedResponse
+    {
+        $avatar = $user->getRawOriginal('avatar');
+
+        abort_unless($avatar && Storage::disk($this->avatarDisk())->exists($avatar), 404);
+
+        return Storage::disk($this->avatarDisk())->response($avatar);
     }
 
     /**
@@ -100,6 +96,31 @@ class ProfileController extends Controller
             (string) $user->id,
             config('uploads.user_avatars.directory', 'uploads/users/{user}/avatars'),
         );
+    }
+
+    private function storeAvatar(Request $request, User $user): string
+    {
+        $avatar = $request->file('avatar');
+
+        if (! $avatar) {
+            throw ValidationException::withMessages([
+                'avatar' => __('The avatar could not be uploaded.'),
+            ]);
+        }
+
+        $storedAvatar = $avatar->storeAs(
+            trim($this->avatarDirectory($user), '/'),
+            $avatar->hashName(),
+            ['disk' => $this->avatarDisk()],
+        );
+
+        if (! is_string($storedAvatar)) {
+            throw ValidationException::withMessages([
+                'avatar' => __('The avatar could not be uploaded. Please check the storage path and permissions.'),
+            ]);
+        }
+
+        return $storedAvatar;
     }
 
     private function deleteLocalAvatar(User $user): void

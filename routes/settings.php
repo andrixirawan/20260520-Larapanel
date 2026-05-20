@@ -5,6 +5,8 @@ use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
+Route::get('users/{user}/avatar', [ProfileController::class, 'avatar'])->name('profile.avatar');
+
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', '/settings/profile');
 
