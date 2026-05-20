@@ -431,6 +431,13 @@ cat > /home/shec5913/public_html/demo.shendro.cloud/.htaccess <<'EOF'
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
+    # Serve uploaded files directly from the public storage folder.
+    # Without this, some cPanel/LiteSpeed setups route /storage/* into Laravel
+    # and uploaded avatars return 404 even when the file exists on disk.
+    RewriteCond %{REQUEST_URI} ^/storage/
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
@@ -554,149 +561,79 @@ tail -n 100 /home/shec5913/public_html/demo.shendro.cloud/error_log
 
 ---
 
-# M. Command Deploy Final Sekali Jalan
 
-Copy satu blok ini ke Terminal cPanel. Perintah ini mulai dari `git pull` sampai cache, migration, public copy, storage folder, `.htaccess`, `index.php`, permission, dan debug route check.
+# M. Deploy Singkat Bertahap
+
+Gunakan bagian ini untuk deploy cepat tanpa satu script besar. Jalankan per blok. Kalau satu blok error, berhenti di situ dan baca pesan errornya.
+
+## M1. Pull dan Composer
 
 ```bash
-set -e
+cd /home/shec5913/repositories/larapanel
+git pull origin main
 
-PROJECT_DIR="/home/shec5913/repositories/larapanel"
-PUBLIC_DIR="/home/shec5913/public_html/demo.shendro.cloud"
-PHP_CLI="/opt/cpanel/ea-php85/root/usr/bin/php"
-BRANCH="main"
-
-echo "==> Masuk project"
-cd "$PROJECT_DIR"
-
-echo "==> Git pull"
-git pull origin "$BRANCH"
-
-echo "==> Composer install"
 if [ -f composer.phar ]; then
-  "$PHP_CLI" composer.phar install --no-dev --optimize-autoloader --no-interaction --no-scripts
-elif command -v composer >/dev/null 2>&1; then
+  /opt/cpanel/ea-php85/root/usr/bin/php composer.phar install --no-dev --optimize-autoloader --no-interaction --no-scripts
+else
   composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-else
-  echo "Composer tidak ditemukan. Upload composer.phar ke $PROJECT_DIR atau aktifkan composer di cPanel." >&2
-  exit 1
 fi
+```
 
-echo "==> Pastikan folder public storage untuk upload avatar"
-mkdir -p "$PUBLIC_DIR/storage"
+## M2. Env Storage dan Artisan
 
-echo "==> Pastikan PUBLIC_DISK_ROOT dan PUBLIC_DISK_URL ada di .env"
-if grep -q '^PUBLIC_DISK_ROOT=' .env; then
-  sed -i 's#^PUBLIC_DISK_ROOT=.*#PUBLIC_DISK_ROOT=/home/shec5913/public_html/demo.shendro.cloud/storage#' .env
-else
-  printf '\nPUBLIC_DISK_ROOT=/home/shec5913/public_html/demo.shendro.cloud/storage\n' >> .env
-fi
+```bash
+cd /home/shec5913/repositories/larapanel
+mkdir -p /home/shec5913/public_html/demo.shendro.cloud/storage
 
-if grep -q '^PUBLIC_DISK_URL=' .env; then
-  sed -i 's#^PUBLIC_DISK_URL=.*#PUBLIC_DISK_URL=https://demo.shendro.cloud/storage#' .env
-else
-  printf 'PUBLIC_DISK_URL=https://demo.shendro.cloud/storage\n' >> .env
-fi
+grep -q '^PUBLIC_DISK_ROOT=' .env \
+  && sed -i 's#^PUBLIC_DISK_ROOT=.*#PUBLIC_DISK_ROOT=/home/shec5913/public_html/demo.shendro.cloud/storage#' .env \
+  || printf '\nPUBLIC_DISK_ROOT=/home/shec5913/public_html/demo.shendro.cloud/storage\n' >> .env
 
-echo "==> Bersihkan cache lama sebelum package discover"
+grep -q '^PUBLIC_DISK_URL=' .env \
+  && sed -i 's#^PUBLIC_DISK_URL=.*#PUBLIC_DISK_URL=https://demo.shendro.cloud/storage#' .env \
+  || printf 'PUBLIC_DISK_URL=https://demo.shendro.cloud/storage\n' >> .env
+
 rm -f bootstrap/cache/config.php bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/routes-v7.php bootstrap/cache/events.php
 
-echo "==> Laravel package discover"
-"$PHP_CLI" artisan package:discover --ansi
+/opt/cpanel/ea-php85/root/usr/bin/php artisan package:discover --ansi
+/opt/cpanel/ea-php85/root/usr/bin/php artisan migrate --force
+/opt/cpanel/ea-php85/root/usr/bin/php artisan optimize:clear
+```
 
-echo "==> Migration"
-"$PHP_CLI" artisan migrate --force
+## M3. Copy Public Tanpa Menimpa `index.php` dan `.htaccess`
 
-echo "==> Clear cache"
-"$PHP_CLI" artisan optimize:clear
-"$PHP_CLI" artisan config:clear
-"$PHP_CLI" artisan cache:clear
-"$PHP_CLI" artisan view:clear
-"$PHP_CLI" artisan route:clear
+```bash
+PROJECT_DIR=/home/shec5913/repositories/larapanel
+PUBLIC_DIR=/home/shec5913/public_html/demo.shendro.cloud
 
-echo "==> Cache production"
-"$PHP_CLI" artisan config:cache
-"$PHP_CLI" artisan route:cache
-"$PHP_CLI" artisan view:cache
+[ -f "$PUBLIC_DIR/.htaccess" ] || { echo "File .htaccess belum ada. Jalankan bagian I1 dulu."; exit 1; }
+[ -f "$PUBLIC_DIR/index.php" ] || { echo "File index.php belum ada. Jalankan bagian J1 dulu."; exit 1; }
 
-echo "==> Copy public folder ke subdomain"
-mkdir -p "$PUBLIC_DIR"
-cp -a "$PROJECT_DIR/public/." "$PUBLIC_DIR/"
+rm -rf "$PUBLIC_DIR/build"
+cp -a "$PROJECT_DIR/public/build" "$PUBLIC_DIR/"
+find "$PROJECT_DIR/public" -maxdepth 1 -type f ! -name index.php ! -name .htaccess -exec cp -a {} "$PUBLIC_DIR/" \;
+```
 
-echo "==> Tulis ulang .htaccess"
-cat > "$PUBLIC_DIR/.htaccess" <<'EOF'
-<IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
+## M4. Permission dan Cek
 
-    RewriteEngine On
+```bash
+chmod -R 755 /home/shec5913/repositories/larapanel/storage
+chmod -R 755 /home/shec5913/repositories/larapanel/bootstrap/cache
+chmod -R 755 /home/shec5913/public_html/demo.shendro.cloud/storage
+chmod 755 /home/shec5913/public_html/demo.shendro.cloud
+chmod 644 /home/shec5913/public_html/demo.shendro.cloud/.htaccess
+chmod 644 /home/shec5913/public_html/demo.shendro.cloud/index.php
 
-    # Handle Authorization Header
-    RewriteCond %{HTTP:Authorization} .
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+/opt/cpanel/ea-php85/root/usr/bin/php artisan tinker --execute='dump(config("app.url")); dump(config("filesystems.disks.public.root")); dump(config("filesystems.disks.public.url"));'
+```
 
-    # Handle X-XSRF-Token Header
-    RewriteCond %{HTTP:x-xsrf-token} .
-    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+## M5. Cache Production Setelah Debug Beres
 
-    # Redirect Trailing Slashes If Not A Folder...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
-
-    # Send Requests To Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ index.php [L]
-</IfModule>
-
-# php -- BEGIN cPanel-generated handler, do not edit
-# Set the “alt-php84” package as the default “PHP” programming language.
-<IfModule mime_module>
-  AddHandler application/x-httpd-alt-php84 .php .php8 .phtml
-</IfModule>
-# php -- END cPanel-generated handler, do not edit
-EOF
-
-echo "==> Tulis ulang index.php"
-cat > "$PUBLIC_DIR/index.php" <<'PHP'
-<?php
-
-use Illuminate\Foundation\Application;
-use Illuminate\Http\Request;
-
-define('LARAVEL_START', microtime(true));
-
-// Determine if the application is in maintenance mode...
-if (file_exists($maintenance = __DIR__.'/../../repositories/larapanel/storage/framework/maintenance.php')) {
-    require $maintenance;
-}
-
-// Register the Composer autoloader...
-require __DIR__.'/../../repositories/larapanel/vendor/autoload.php';
-
-// Bootstrap Laravel and handle the request...
-/** @var Application $app */
-$app = require_once __DIR__.'/../../repositories/larapanel/bootstrap/app.php';
-
-$app->handleRequest(Request::capture());
-PHP
-
-echo "==> Permission"
-chmod -R 755 "$PROJECT_DIR/storage"
-chmod -R 755 "$PROJECT_DIR/bootstrap/cache"
-chmod -R 755 "$PUBLIC_DIR/storage"
-chmod 755 "$PUBLIC_DIR"
-chmod 644 "$PUBLIC_DIR/.htaccess"
-chmod 644 "$PUBLIC_DIR/index.php"
-
-echo "==> Cek hasil config penting"
-"$PHP_CLI" artisan tinker --execute='dump(config("app.url")); dump(config("filesystems.disks.public.root")); dump(config("filesystems.disks.public.url"));'
-
-echo "==> Selesai deploy"
-echo "Buka: https://demo.shendro.cloud"
-echo "Jika debug avatar masih dibutuhkan: https://demo.shendro.cloud/debug/avatar-storage"
+```bash
+cd /home/shec5913/repositories/larapanel
+/opt/cpanel/ea-php85/root/usr/bin/php artisan config:cache
+/opt/cpanel/ea-php85/root/usr/bin/php artisan route:cache
+/opt/cpanel/ea-php85/root/usr/bin/php artisan view:cache
 ```
 
 ---
