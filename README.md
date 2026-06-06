@@ -1,4 +1,4 @@
-# Deploy Laravel ke cPanel via Git Pull Manual
+# Deploy Laravel ke cPanel via Git Pull Manual!
 
 Panduan ini untuk deploy project Laravel di cPanel dengan struktur:
 
