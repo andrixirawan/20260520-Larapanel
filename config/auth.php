@@ -114,4 +114,19 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Mobile API Tokens
+    |--------------------------------------------------------------------------
+    |
+    | Tokens are stored hashed and returned only once during login/register.
+    | Set the expiry to null to create non-expiring tokens, or to a positive
+    | number of minutes for rotating mobile sessions.
+    |
+    */
+
+    'mobile_tokens' => [
+        'expire_minutes' => env('AUTH_MOBILE_TOKEN_EXPIRE_MINUTES', 60 * 24 * 30),
+    ],
+
 ];

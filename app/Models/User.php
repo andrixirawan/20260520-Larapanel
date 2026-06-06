@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
@@ -69,6 +70,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     protected function hasCustomAvatar(): Attribute
     {
         return Attribute::get(fn (): bool => filled($this->getRawOriginal('avatar')));
+    }
+
+    /**
+     * @return HasMany<MobileAuthToken, $this>
+     */
+    public function mobileAuthTokens(): HasMany
+    {
+        return $this->hasMany(MobileAuthToken::class);
     }
 
     private function versionAvatarUrl(string $url): string
