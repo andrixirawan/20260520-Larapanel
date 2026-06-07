@@ -35,6 +35,7 @@ Token disimpan hashed di database (`mobile_auth_tokens.token_hash`) dan token as
 | --- | --- | --- | --- |
 | POST | `/api/mobile/auth/register` | No | Register user dan langsung mendapat token. |
 | POST | `/api/mobile/auth/login` | No | Login dengan email/password, mendukung 2FA. |
+| POST | `/api/mobile/auth/google` | No | Login/register dengan Google ID token dari React Native. |
 | POST | `/api/mobile/auth/forgot-password` | No | Kirim email reset password. Response dibuat aman dari user enumeration. |
 | POST | `/api/mobile/auth/reset-password` | No | Reset password memakai token dari email. Semua token mobile user dicabut. |
 | GET | `/api/mobile/user` | Bearer | Ambil data user yang sedang login. |
@@ -130,6 +131,69 @@ atau:
   "recovery_code": "xxxx-yyyy"
 }
 ```
+
+### Google Login
+
+```http
+POST /api/mobile/auth/google
+```
+
+Body:
+
+```json
+{
+  "id_token": "google-id-token-dari-react-native",
+  "device_name": "Pixel 9"
+}
+```
+
+Response `200` sama seperti login email/password:
+
+```json
+{
+  "message": "Authenticated.",
+  "token_type": "Bearer",
+  "access_token": "plain-text-token",
+  "expires_at": "2026-07-06T13:00:00.000000Z",
+  "user": {
+    "id": 1,
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "avatar": "https://lh3.googleusercontent.com/a/example",
+    "has_custom_avatar": false,
+    "email_verified_at": "2026-06-06T13:00:00.000000Z",
+    "is_email_verified": true,
+    "two_factor_enabled": false,
+    "created_at": "2026-06-06T13:00:00.000000Z",
+    "updated_at": "2026-06-06T13:00:00.000000Z"
+  }
+}
+```
+
+Backend akan:
+
+- Verifikasi `id_token` ke Google lewat endpoint `https://oauth2.googleapis.com/tokeninfo`.
+- Menolak token jika `aud` tidak ada di `GOOGLE_MOBILE_CLIENT_IDS`.
+- Menolak token jika email Google belum terverifikasi.
+- Membuat user baru jika email belum ada, atau menautkan akun lama berdasarkan `google_id`/`email`.
+- Mengembalikan Bearer token mobile biasa untuk dipakai di endpoint protected.
+
+Konfigurasi Laravel:
+
+```env
+GOOGLE_CLIENT_ID=web-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=secret-untuk-login-web
+GOOGLE_REDIRECT_URI="${APP_URL}/auth/google/callback"
+
+# Pisahkan dengan koma jika aplikasi mobile punya lebih dari satu client ID.
+GOOGLE_MOBILE_CLIENT_IDS="web-client-id.apps.googleusercontent.com,android-client-id.apps.googleusercontent.com,ios-client-id.apps.googleusercontent.com"
+```
+
+Catatan praktis:
+
+- Jika library React Native dikonfigurasi memakai `webClientId`, biasanya `aud` ID token adalah Web Client ID.
+- Jika flow menghasilkan ID token dengan Android/iOS Client ID sebagai audience, masukkan juga client ID itu ke `GOOGLE_MOBILE_CLIENT_IDS`.
+- Setelah mengubah env production, jalankan `php artisan config:clear` atau rebuild cache config.
 
 ### Current User
 
@@ -317,6 +381,25 @@ export async function login(input: {
   return data.user;
 }
 
+export async function loginWithGoogle(input: {
+  id_token: string;
+  device_name?: string;
+}) {
+  const data = await request<{
+    access_token: string;
+    token_type: "Bearer";
+    expires_at: string | null;
+    user: MobileUser;
+  }>("/auth/google", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+
+  await SecureStore.setItemAsync(TOKEN_KEY, data.access_token);
+
+  return data.user;
+}
+
 export async function currentUser() {
   const data = await request<{ data: MobileUser }>("/user");
 
@@ -339,6 +422,7 @@ EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api/mobile
 
 - Jalankan migration: `php artisan migrate`.
 - Token expiry bisa diubah dengan `AUTH_MOBILE_TOKEN_EXPIRE_MINUTES=43200`.
+- Google login mobile butuh `GOOGLE_MOBILE_CLIENT_IDS`; default `.env.example` memakai `GOOGLE_CLIENT_ID` agar web client ID bisa langsung dipakai.
 - Gunakan HTTPS di production agar Bearer token tidak bocor di jaringan.
 - Untuk endpoint protected baru, pakai middleware `mobile.auth`.
 - Jika perlu membatasi fitur per token nanti, kolom `abilities` sudah tersedia.

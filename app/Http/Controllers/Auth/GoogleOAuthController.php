@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\FindOrCreateGoogleUser;
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Throwable;
 
@@ -18,7 +16,7 @@ class GoogleOAuthController extends Controller
         return Socialite::driver('google')->redirect();
     }
 
-    public function callback(): RedirectResponse
+    public function callback(FindOrCreateGoogleUser $users): RedirectResponse
     {
         try {
             $googleUser = Socialite::driver('google')->user();
@@ -34,28 +32,13 @@ class GoogleOAuthController extends Controller
             ]);
         }
 
-        $user = User::where('google_id', $googleUser->getId())
-            ->orWhere('email', $googleUser->getEmail())
-            ->first();
-
-        if (! $user) {
-            $user = new User([
-                'email' => $googleUser->getEmail(),
-            ]);
-        }
-
-        $user->fill([
-            'name' => $user->exists ? $user->name : ($googleUser->getName() ?: $googleUser->getNickname() ?: 'Google User'),
-            'google_id' => $googleUser->getId(),
-            'google_avatar' => $googleUser->getAvatar(),
-            'email_verified_at' => $user->email_verified_at ?: now(),
-        ]);
-
-        if (! $user->exists) {
-            $user->password = Hash::make(Str::random(32));
-        }
-
-        $user->save();
+        $user = $users->handle(
+            googleId: $googleUser->getId(),
+            email: $googleUser->getEmail(),
+            name: $googleUser->getName(),
+            nickname: $googleUser->getNickname(),
+            avatar: $googleUser->getAvatar(),
+        );
 
         Auth::login($user, remember: true);
 

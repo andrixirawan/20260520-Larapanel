@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Actions\Auth\FindOrCreateGoogleUser;
 use App\Actions\Fortify\CreateNewUser;
 use App\Concerns\PasswordValidationRules;
 use App\Http\Controllers\Controller;
@@ -13,6 +14,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -89,6 +91,29 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($this->throttleKey($request));
+
+        return $this->tokenResponse($user, $request);
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    public function google(Request $request, FindOrCreateGoogleUser $users): JsonResponse
+    {
+        $request->validate([
+            'id_token' => ['required', 'string'],
+            'device_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $googleUser = $this->verifyGoogleIdToken($request);
+
+        $user = $users->handle(
+            googleId: $googleUser['sub'],
+            email: $googleUser['email'],
+            name: $googleUser['name'] ?? null,
+            nickname: null,
+            avatar: $googleUser['picture'] ?? null,
+        );
 
         return $this->tokenResponse($user, $request);
     }
@@ -249,6 +274,64 @@ class AuthController extends Controller
         $user->replaceRecoveryCode($recoveryCode);
 
         return true;
+    }
+
+    /**
+     * @return array{sub: string, email: string, name?: string, picture?: string, aud?: string, iss?: string, email_verified?: bool|string}
+     *
+     * @throws ValidationException
+     */
+    private function verifyGoogleIdToken(Request $request): array
+    {
+        $response = Http::acceptJson()
+            ->timeout(5)
+            ->get('https://oauth2.googleapis.com/tokeninfo', [
+                'id_token' => $request->string('id_token')->toString(),
+            ]);
+
+        if (! $response->ok()) {
+            throw ValidationException::withMessages([
+                'id_token' => ['The Google ID token could not be verified.'],
+            ]);
+        }
+
+        /** @var array<string, mixed> $payload */
+        $payload = $response->json();
+        $audience = (string) ($payload['aud'] ?? '');
+        $allowedClientIds = collect(config('services.google.mobile_client_ids', []))
+            ->filter()
+            ->map(fn (string $clientId): string => trim($clientId))
+            ->values();
+
+        if ($allowedClientIds->isEmpty() || ! $allowedClientIds->contains($audience)) {
+            throw ValidationException::withMessages([
+                'id_token' => ['The Google ID token audience is not allowed.'],
+            ]);
+        }
+
+        if (! in_array($payload['iss'] ?? null, ['accounts.google.com', 'https://accounts.google.com'], true)) {
+            throw ValidationException::withMessages([
+                'id_token' => ['The Google ID token issuer is not valid.'],
+            ]);
+        }
+
+        $emailVerified = $payload['email_verified'] ?? false;
+
+        if (($emailVerified !== true && $emailVerified !== 'true') || blank($payload['email'] ?? null) || blank($payload['sub'] ?? null)) {
+            throw ValidationException::withMessages([
+                'id_token' => ['The Google account email could not be verified.'],
+            ]);
+        }
+
+        return [
+            'sub' => (string) $payload['sub'],
+            'email' => (string) $payload['email'],
+            'name' => isset($payload['name']) ? (string) $payload['name'] : null,
+            'picture' => isset($payload['picture']) ? (string) $payload['picture'] : null,
+            'aud' => $audience,
+            'iss' => (string) ($payload['iss'] ?? ''),
+            'email_verified' => $emailVerified,
+        ];
     }
 
     /**
