@@ -198,6 +198,31 @@ test('mobile google redirect rejects unallowed app callback uri', function () {
     expect($query['error'])->toBe('mobile_redirect_uri_not_allowed');
 });
 
+test('mobile google redirect accepts legacy app scheme for existing builds', function () {
+    config()->set('auth.mobile_tokens.redirect_uris', [
+        'com.shendrong.larapanel://auth/google/callback',
+        'larapanel://auth/google/callback',
+    ]);
+
+    $provider = Mockery::mock();
+
+    $provider->shouldReceive('stateless')->once()->andReturnSelf();
+    $provider->shouldReceive('with')->once()->andReturnSelf();
+    $provider->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect('https://accounts.google.com/oauth'));
+
+    Socialite::shouldReceive('driver')
+        ->once()
+        ->with('google')
+        ->andReturn($provider);
+
+    $this->get(route('auth.google.mobile.redirect', [
+        'mobile' => 1,
+        'mobile_redirect_uri' => 'larapanel://auth/google/callback',
+    ]))->assertRedirect('https://accounts.google.com/oauth');
+});
+
 test('mobile google callback with expired state redirects back to app instead of logging in web', function () {
     config()->set('auth.mobile_tokens.redirect_uris', [
         'com.shendrong.larapanel://auth/google/callback',
