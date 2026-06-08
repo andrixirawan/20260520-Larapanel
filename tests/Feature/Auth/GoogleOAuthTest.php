@@ -106,7 +106,7 @@ test('mobile users can authenticate with google through laravel redirect', funct
     Mail::fake();
 
     config()->set('auth.mobile_tokens.redirect_uris', [
-        'larapanel://auth/google/callback',
+        'com.shendrong.larapanel://auth/google/callback',
     ]);
 
     $provider = Mockery::mock(Provider::class);
@@ -131,7 +131,7 @@ test('mobile users can authenticate with google through laravel redirect', funct
 
     $this->get(route('auth.google.mobile.redirect', [
         'mobile' => 1,
-        'mobile_redirect_uri' => 'larapanel://auth/google/callback',
+        'mobile_redirect_uri' => 'com.shendrong.larapanel://auth/google/callback',
         'device_name' => 'Expo Go',
     ]))->assertRedirect('https://accounts.google.com/oauth');
 
@@ -139,7 +139,7 @@ test('mobile users can authenticate with google through laravel redirect', funct
 
     $location = $callback->headers->get('Location');
 
-    expect(str_starts_with($location, 'larapanel://auth/google/callback?'))->toBeTrue();
+    expect(str_starts_with($location, 'com.shendrong.larapanel://auth/google/callback?'))->toBeTrue();
 
     parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
 
@@ -164,7 +164,7 @@ test('mobile users can authenticate with google through laravel redirect', funct
 
 test('mobile google redirect rejects unallowed app callback uri', function () {
     config()->set('auth.mobile_tokens.redirect_uris', [
-        'larapanel://auth/google/callback',
+        'com.shendrong.larapanel://auth/google/callback',
     ]);
 
     $response = $this->get(route('auth.google.mobile.redirect', [
@@ -174,7 +174,7 @@ test('mobile google redirect rejects unallowed app callback uri', function () {
 
     $location = $response->headers->get('Location');
 
-    expect(str_starts_with($location, 'larapanel://auth/google/callback?'))->toBeTrue();
+    expect(str_starts_with($location, 'com.shendrong.larapanel://auth/google/callback?'))->toBeTrue();
 
     parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
 
