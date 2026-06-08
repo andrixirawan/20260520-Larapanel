@@ -35,7 +35,7 @@ Token disimpan hashed di database (`mobile_auth_tokens.token_hash`) dan token as
 | --- | --- | --- | --- |
 | POST | `/api/mobile/auth/register` | No | Register user dan langsung mendapat token. |
 | POST | `/api/mobile/auth/login` | No | Login dengan email/password, mendukung 2FA. |
-| POST | `/api/mobile/auth/google` | No | Login/register dengan Google ID token dari React Native. |
+| GET | `/auth/google/redirect` | No | Mulai Google login lewat Laravel dan system browser. |
 | POST | `/api/mobile/auth/forgot-password` | No | Kirim email reset password. Response dibuat aman dari user enumeration. |
 | POST | `/api/mobile/auth/reset-password` | No | Reset password memakai token dari email. Semua token mobile user dicabut. |
 | GET | `/api/mobile/user` | Bearer | Ambil data user yang sedang login. |
@@ -134,49 +134,25 @@ atau:
 
 ### Google Login
 
+Google login mobile memakai flow redirect Laravel, bukan Google SDK di React Native.
+
 ```http
-POST /api/mobile/auth/google
+GET /auth/google/redirect?mobile=1&mobile_redirect_uri=larapanel%3A%2F%2Fauth%2Fgoogle%2Fcallback&device_name=iPhone%2015
 ```
 
-Body:
+Flow:
 
-```json
-{
-  "id_token": "google-id-token-dari-react-native",
-  "device_name": "Pixel 9"
-}
+1. RN app membuka endpoint Laravel di system browser.
+2. User login Google di browser.
+3. Google callback ke Laravel.
+4. Laravel membuat/menautkan user dan mobile token.
+5. Laravel redirect balik ke app, contoh:
+
+```text
+larapanel://auth/google/callback?access_token=plain-text-token
 ```
 
-Response `200` sama seperti login email/password:
-
-```json
-{
-  "message": "Authenticated.",
-  "token_type": "Bearer",
-  "access_token": "plain-text-token",
-  "expires_at": "2026-07-06T13:00:00.000000Z",
-  "user": {
-    "id": 1,
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "avatar": "https://lh3.googleusercontent.com/a/example",
-    "has_custom_avatar": false,
-    "email_verified_at": "2026-06-06T13:00:00.000000Z",
-    "is_email_verified": true,
-    "two_factor_enabled": false,
-    "created_at": "2026-06-06T13:00:00.000000Z",
-    "updated_at": "2026-06-06T13:00:00.000000Z"
-  }
-}
-```
-
-Backend akan:
-
-- Verifikasi `id_token` ke Google lewat endpoint `https://oauth2.googleapis.com/tokeninfo`.
-- Menolak token jika `aud` tidak ada di `GOOGLE_MOBILE_CLIENT_IDS`.
-- Menolak token jika email Google belum terverifikasi.
-- Membuat user baru jika email belum ada, atau menautkan akun lama berdasarkan `google_id`/`email`.
-- Mengembalikan Bearer token mobile biasa untuk dipakai di endpoint protected.
+RN app menerima `access_token` atau `token`, menyimpannya di SecureStore, lalu memanggil `GET /api/mobile/user`.
 
 Konfigurasi Laravel:
 
@@ -184,15 +160,14 @@ Konfigurasi Laravel:
 GOOGLE_CLIENT_ID=web-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=secret-untuk-login-web
 GOOGLE_REDIRECT_URI="${APP_URL}/auth/google/callback"
-
-# Pisahkan dengan koma jika aplikasi mobile punya lebih dari satu client ID.
-GOOGLE_MOBILE_CLIENT_IDS="web-client-id.apps.googleusercontent.com,android-client-id.apps.googleusercontent.com,ios-client-id.apps.googleusercontent.com"
+AUTH_MOBILE_REDIRECT_URIS=larapanel://auth/google/callback
 ```
 
 Catatan praktis:
 
-- Jika library React Native dikonfigurasi memakai `webClientId`, biasanya `aud` ID token adalah Web Client ID.
-- Jika flow menghasilkan ID token dengan Android/iOS Client ID sebagai audience, masukkan juga client ID itu ke `GOOGLE_MOBILE_CLIENT_IDS`.
+- React Native tidak perlu `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, atau Android/iOS OAuth Client ID selama Google login sepenuhnya lewat Laravel.
+- Jangan buka halaman Google OAuth di WebView. Gunakan system browser / auth session.
+- `mobile_redirect_uri` harus ada di whitelist `AUTH_MOBILE_REDIRECT_URIS`, karena callback membawa bearer token mobile.
 - Setelah mengubah env production, jalankan `php artisan config:clear` atau rebuild cache config.
 
 ### Current User
@@ -301,7 +276,9 @@ Gunakan `expo-secure-store` untuk token. Hindari AsyncStorage untuk token auth.
 ```ts
 import * as SecureStore from "expo-secure-store";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? `${BACKEND_URL}/api/mobile`;
+const APP_SCHEME = process.env.EXPO_PUBLIC_APP_SCHEME ?? "larapanel";
 const TOKEN_KEY = "mobile_access_token";
 
 export type MobileUser = {
@@ -381,23 +358,28 @@ export async function login(input: {
   return data.user;
 }
 
-export async function loginWithGoogle(input: {
-  id_token: string;
-  device_name?: string;
-}) {
-  const data = await request<{
-    access_token: string;
-    token_type: "Bearer";
-    expires_at: string | null;
-    user: MobileUser;
-  }>("/auth/google", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+export async function completeGoogleLogin(accessToken: string) {
+  await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
 
-  await SecureStore.setItemAsync(TOKEN_KEY, data.access_token);
+  return currentUser();
+}
 
-  return data.user;
+export function googleLoginUrl(deviceName?: string) {
+  if (!BACKEND_URL) {
+    throw new Error("EXPO_PUBLIC_BACKEND_URL is not configured");
+  }
+
+  const mobileRedirectUri = `${APP_SCHEME}://auth/google/callback`;
+  const url = new URL(`${BACKEND_URL}/auth/google/redirect`);
+
+  url.searchParams.set("mobile", "1");
+  url.searchParams.set("mobile_redirect_uri", mobileRedirectUri);
+
+  if (deviceName) {
+    url.searchParams.set("device_name", deviceName);
+  }
+
+  return url.toString();
 }
 
 export async function currentUser() {
@@ -415,14 +397,16 @@ export async function logout() {
 `.env` di React Native/Expo:
 
 ```env
-EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api/mobile
+EXPO_PUBLIC_BACKEND_URL=http://10.0.2.2:8000
+EXPO_PUBLIC_APP_SCHEME=larapanel
 ```
 
 ## Backend Notes
 
 - Jalankan migration: `php artisan migrate`.
 - Token expiry bisa diubah dengan `AUTH_MOBILE_TOKEN_EXPIRE_MINUTES=43200`.
-- Google login mobile butuh `GOOGLE_MOBILE_CLIENT_IDS`; default `.env.example` memakai `GOOGLE_CLIENT_ID` agar web client ID bisa langsung dipakai.
+- Google login mobile lewat Laravel redirect cukup memakai `EXPO_PUBLIC_BACKEND_URL` di app. Google Client ID dan Secret tetap hanya di Laravel.
+- Deep link callback mobile harus diizinkan di `AUTH_MOBILE_REDIRECT_URIS`.
 - Gunakan HTTPS di production agar Bearer token tidak bocor di jaringan.
 - Untuk endpoint protected baru, pakai middleware `mobile.auth`.
 - Jika perlu membatasi fitur per token nanti, kolom `abilities` sudah tersedia.

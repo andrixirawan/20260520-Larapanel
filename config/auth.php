@@ -127,6 +127,10 @@ return [
 
     'mobile_tokens' => [
         'expire_minutes' => env('AUTH_MOBILE_TOKEN_EXPIRE_MINUTES', 60 * 24 * 30),
+        'redirect_uris' => array_filter(array_map(
+            'trim',
+            explode(',', (string) env('AUTH_MOBILE_REDIRECT_URIS', 'larapanel://auth/google/callback'))
+        )),
     ],
 
 ];

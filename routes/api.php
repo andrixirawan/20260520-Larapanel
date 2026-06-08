@@ -11,10 +11,6 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
     Route::post('auth/login', [AuthController::class, 'login'])
         ->name('auth.login');
 
-    Route::post('auth/google', [AuthController::class, 'google'])
-        ->middleware('throttle:6,1')
-        ->name('auth.google');
-
     Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword'])
         ->middleware('throttle:6,1')
         ->name('auth.forgot-password');

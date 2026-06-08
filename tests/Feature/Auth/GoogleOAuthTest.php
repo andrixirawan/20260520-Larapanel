@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\MobileAuthToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -99,4 +100,74 @@ test('google callback links an existing account without changing its password', 
         ->and($existingUser->email_verified_at)->not->toBeNull();
 
     $this->assertAuthenticatedAs($existingUser);
+});
+
+test('mobile users can authenticate with google through laravel redirect', function () {
+    Mail::fake();
+
+    config()->set('auth.mobile_tokens.redirect_uris', [
+        'larapanel://auth/google/callback',
+    ]);
+
+    $provider = Mockery::mock(Provider::class);
+
+    $provider->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect('https://accounts.google.com/oauth'));
+
+    $provider->shouldReceive('user')
+        ->once()
+        ->andReturn(googleUser([
+            'id' => 'google-mobile-123',
+            'name' => 'Mobile Google',
+            'email' => 'google-mobile@example.com',
+            'avatar' => 'https://example.com/google-mobile.jpg',
+        ]));
+
+    Socialite::shouldReceive('driver')
+        ->twice()
+        ->with('google')
+        ->andReturn($provider);
+
+    $this->get(route('auth.google.mobile.redirect', [
+        'mobile' => 1,
+        'mobile_redirect_uri' => 'larapanel://auth/google/callback',
+        'device_name' => 'Expo Go',
+    ]))->assertRedirect('https://accounts.google.com/oauth');
+
+    $callback = $this->get(route('auth.google.callback'));
+
+    $location = $callback->headers->get('Location');
+
+    expect(str_starts_with($location, 'larapanel://auth/google/callback?'))->toBeTrue();
+
+    parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+    expect($query)
+        ->toHaveKey('access_token')
+        ->and($query['token_type'])->toBe('Bearer');
+
+    $user = User::where('email', 'google-mobile@example.com')->firstOrFail();
+
+    expect($user->google_id)->toBe('google-mobile-123')
+        ->and($user->google_avatar)->toBe('https://example.com/google-mobile.jpg')
+        ->and(MobileAuthToken::query()->count())->toBe(1);
+
+    $this->assertGuest();
+
+    $this->withToken($query['access_token'])
+        ->getJson(route('api.mobile.user'))
+        ->assertOk()
+        ->assertJsonPath('data.email', 'google-mobile@example.com');
+});
+
+test('mobile google redirect rejects unallowed app callback uri', function () {
+    config()->set('auth.mobile_tokens.redirect_uris', [
+        'larapanel://auth/google/callback',
+    ]);
+
+    $this->get(route('auth.google.mobile.redirect', [
+        'mobile' => 1,
+        'mobile_redirect_uri' => 'evil://auth/google/callback',
+    ]))->assertRedirect(route('login'));
 });
