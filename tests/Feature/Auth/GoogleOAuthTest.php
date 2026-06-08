@@ -105,11 +105,26 @@ test('google callback links an existing account without changing its password', 
 test('mobile users can authenticate with google through laravel redirect', function () {
     Mail::fake();
 
+    $mobileState = null;
+
     config()->set('auth.mobile_tokens.redirect_uris', [
         'com.shendrong.larapanel://auth/google/callback',
     ]);
 
-    $provider = Mockery::mock(Provider::class);
+    $provider = Mockery::mock();
+
+    $provider->shouldReceive('stateless')
+        ->twice()
+        ->andReturnSelf();
+
+    $provider->shouldReceive('with')
+        ->once()
+        ->with(Mockery::on(function (array $parameters) use (&$mobileState): bool {
+            $mobileState = $parameters['state'] ?? null;
+
+            return is_string($mobileState) && str_starts_with($mobileState, 'mobile_');
+        }))
+        ->andReturnSelf();
 
     $provider->shouldReceive('redirect')
         ->once()
@@ -135,7 +150,9 @@ test('mobile users can authenticate with google through laravel redirect', funct
         'device_name' => 'Expo Go',
     ]))->assertRedirect('https://accounts.google.com/oauth');
 
-    $callback = $this->get(route('auth.google.callback'));
+    $callback = $this->get(route('auth.google.callback', [
+        'state' => $mobileState,
+    ]));
 
     $location = $callback->headers->get('Location');
 
@@ -179,4 +196,22 @@ test('mobile google redirect rejects unallowed app callback uri', function () {
     parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
 
     expect($query['error'])->toBe('mobile_redirect_uri_not_allowed');
+});
+
+test('mobile google callback with expired state redirects back to app instead of logging in web', function () {
+    config()->set('auth.mobile_tokens.redirect_uris', [
+        'com.shendrong.larapanel://auth/google/callback',
+    ]);
+
+    $location = $this->get(route('auth.google.callback', [
+        'state' => 'mobile_expired_state',
+    ]))->headers->get('Location');
+
+    expect(str_starts_with($location, 'com.shendrong.larapanel://auth/google/callback?'))->toBeTrue();
+
+    parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+    expect($query['error'])->toBe('mobile_oauth_state_expired');
+
+    $this->assertGuest();
 });
