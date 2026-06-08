@@ -151,7 +151,8 @@ test('mobile users can authenticate with google through laravel redirect', funct
 
     expect($user->google_id)->toBe('google-mobile-123')
         ->and($user->google_avatar)->toBe('https://example.com/google-mobile.jpg')
-        ->and(MobileAuthToken::query()->count())->toBe(1);
+        ->and(MobileAuthToken::query()->count())->toBe(1)
+        ->and(MobileAuthToken::query()->first()?->name)->toBe('Expo Go');
 
     $this->assertGuest();
 
