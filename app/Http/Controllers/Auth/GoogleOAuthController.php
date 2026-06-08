@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class GoogleOAuthController extends Controller
@@ -23,8 +24,13 @@ class GoogleOAuthController extends Controller
             $mobileRedirectUri = $this->mobileRedirectUri($request);
 
             if (! $mobileRedirectUri) {
-                return redirect()->route('login')->withErrors([
-                    'email' => 'Mobile Google redirect URI is not allowed.',
+                $fallbackRedirectUri = $this->defaultMobileRedirectUri();
+
+                abort_if(! $fallbackRedirectUri, Response::HTTP_BAD_REQUEST, 'Mobile Google redirect URI is not allowed.');
+
+                return $this->redirectToMobile($fallbackRedirectUri, [
+                    'error' => 'mobile_redirect_uri_not_allowed',
+                    'message' => 'Mobile Google redirect URI is not allowed.',
                 ]);
             }
 
@@ -115,6 +121,14 @@ class GoogleOAuthController extends Controller
         }
 
         return $redirectUri;
+    }
+
+    private function defaultMobileRedirectUri(): ?string
+    {
+        return collect(config('auth.mobile_tokens.redirect_uris', []))
+            ->filter()
+            ->map(fn (string $uri): string => trim($uri))
+            ->first();
     }
 
     /**

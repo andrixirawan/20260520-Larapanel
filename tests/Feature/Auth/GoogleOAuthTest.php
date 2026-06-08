@@ -167,8 +167,16 @@ test('mobile google redirect rejects unallowed app callback uri', function () {
         'larapanel://auth/google/callback',
     ]);
 
-    $this->get(route('auth.google.mobile.redirect', [
+    $response = $this->get(route('auth.google.mobile.redirect', [
         'mobile' => 1,
         'mobile_redirect_uri' => 'evil://auth/google/callback',
-    ]))->assertRedirect(route('login'));
+    ]));
+
+    $location = $response->headers->get('Location');
+
+    expect(str_starts_with($location, 'larapanel://auth/google/callback?'))->toBeTrue();
+
+    parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+    expect($query['error'])->toBe('mobile_redirect_uri_not_allowed');
 });
