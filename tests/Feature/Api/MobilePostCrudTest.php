@@ -4,6 +4,8 @@ use App\Actions\Mobile\CreateMobileAuthToken;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
@@ -45,7 +47,7 @@ test('mobile users can list and filter posts', function () {
         ->assertJsonPath('filters.search', 'Laravel')
         ->assertJsonStructure([
             'data' => [
-                '*' => ['id', 'title', 'slug', 'cover_url', 'body', 'author', 'created_at', 'updated_at'],
+                '*' => ['id', 'title', 'slug', 'cover', 'cover_url', 'body', 'author', 'created_at', 'updated_at'],
             ],
             'links',
             'meta',
@@ -92,4 +94,71 @@ test('mobile users can create show update and delete posts', function () {
         ->assertJsonPath('message', 'Post deleted.');
 
     expect(Post::query()->whereKey($postId)->exists())->toBeFalse();
+});
+
+test('mobile users can create a post with cover upload', function () {
+    Storage::fake('public');
+    $token = mobileTokenFor(User::factory()->create());
+
+    $response = $this->withToken($token)
+        ->post(route('api.mobile.posts.store'), [
+            'title' => 'Mobile Cover Post',
+            'slug' => '',
+            'body' => 'Created with a cover from mobile.',
+            'author' => 'Mobile User',
+            'cover' => UploadedFile::fake()->image('plain-cover.jpg'),
+        ])
+        ->assertCreated()
+        ->assertJsonPath('message', 'Post created.');
+
+    $post = Post::query()->findOrFail($response->json('data.id'));
+
+    expect($post->cover)
+        ->toStartWith('uploads/posts/covers/')
+        ->and($response->json('data.cover'))->toBe($post->cover)
+        ->and($response->json('data.cover_url'))->toBe(route('posts.cover', $post));
+
+    Storage::disk('public')->assertExists($post->cover);
+});
+
+test('mobile users can replace and remove a cover image', function () {
+    Storage::fake('public');
+    $token = mobileTokenFor(User::factory()->create());
+    $oldCover = 'uploads/posts/covers/old-cover.jpg';
+    Storage::disk('public')->put($oldCover, 'old cover');
+    $post = Post::factory()->create(['cover' => $oldCover]);
+
+    $this->withToken($token)
+        ->post(route('api.mobile.posts.update', $post), [
+            '_method' => 'PATCH',
+            'title' => 'Updated Cover Post',
+            'slug' => 'updated-cover-post',
+            'body' => 'Updated with a new cover from mobile.',
+            'author' => 'Mobile Editor',
+            'cover' => UploadedFile::fake()->image('new-cover.png'),
+        ])
+        ->assertOk()
+        ->assertJsonPath('message', 'Post updated.')
+        ->assertJsonPath('data.cover_url', route('posts.cover', $post));
+
+    $newCover = $post->refresh()->cover;
+
+    expect($newCover)->not->toBe($oldCover);
+    Storage::disk('public')->assertMissing($oldCover);
+    Storage::disk('public')->assertExists($newCover);
+
+    $this->withToken($token)
+        ->patchJson(route('api.mobile.posts.update', $post), [
+            'title' => 'Updated Cover Post',
+            'slug' => 'updated-cover-post',
+            'body' => 'Updated without cover.',
+            'author' => 'Mobile Editor',
+            'remove_cover' => true,
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.cover', null)
+        ->assertJsonPath('data.cover_url', null);
+
+    Storage::disk('public')->assertMissing($newCover);
+    expect($post->refresh()->cover)->toBeNull();
 });

@@ -20,6 +20,7 @@ class PostResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'slug' => $this->slug,
+            'cover' => $this->cover,
             'cover_url' => $this->cover ? route('posts.cover', $this->resource) : null,
             'body' => $this->body,
             'author' => $this->author,
