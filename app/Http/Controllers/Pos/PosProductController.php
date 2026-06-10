@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Pos\Product;
 use App\Models\Pos\ProductVariant;
 use App\Services\Pos\PosInventoryService;
+use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,7 +21,16 @@ class PosProductController extends Controller
 
     public function index(Request $request): Response
     {
-        $search = trim($request->string('search')->toString());
+        $search = TableQuery::search($request);
+        $sortOptions = [
+            'name' => 'name',
+            'sku' => 'sku',
+            'status' => 'status',
+            'created_at' => 'created_at',
+        ];
+        $sort = TableQuery::sort($request, $sortOptions, 'created_at');
+        $direction = TableQuery::direction($request);
+        $perPage = TableQuery::perPage($request);
 
         $products = Product::query()
             ->with(['defaultVariant.stock'])
@@ -34,8 +44,9 @@ class PosProductController extends Controller
                             ->orWhere('barcode', 'like', "%{$search}%"));
                 });
             })
-            ->latest()
-            ->paginate(10)
+            ->orderBy($sortOptions[$sort], $direction)
+            ->orderByDesc('id')
+            ->paginate($perPage)
             ->withQueryString()
             ->through(function (Product $product): array {
                 $variant = $product->defaultVariant;
@@ -56,7 +67,12 @@ class PosProductController extends Controller
             });
 
         return Inertia::render('pos/products', [
-            'filters' => ['search' => $search],
+            'filters' => [
+                'search' => $search,
+                'sort' => $sort,
+                'direction' => $direction,
+                'per_page' => $perPage,
+            ],
             'products' => $products,
         ]);
     }

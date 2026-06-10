@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Pos\Shift;
 use App\Services\Pos\PosShiftService;
 use App\Support\AccessControl;
+use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,12 +21,37 @@ class PosShiftController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        $search = TableQuery::search($request);
+        $sortOptions = [
+            'id' => 'id',
+            'status' => 'status',
+            'opening_cash' => 'opening_cash',
+            'cash_difference' => 'cash_difference',
+            'opened_at' => 'opened_at',
+        ];
+        $sort = TableQuery::sort($request, $sortOptions, 'opened_at');
+        $direction = TableQuery::direction($request);
+        $perPage = TableQuery::perPage($request, 15);
 
         $shifts = Shift::query()
             ->with(['cashier:id,name', 'openedBy:id,name', 'closedBy:id,name'])
             ->when(! $user->can(AccessControl::PERMISSION_POS_SHIFTS_MANAGE), fn ($query) => $query->where('cashier_id', $user->id))
-            ->latest('opened_at')
-            ->paginate(15)
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($builder) use ($search): void {
+                    $builder
+                        ->where('status', 'like', "%{$search}%")
+                        ->orWhereHas('cashier', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('openedBy', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('closedBy', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"));
+
+                    if (is_numeric($search)) {
+                        $builder->orWhere('id', (int) $search);
+                    }
+                });
+            })
+            ->orderBy($sortOptions[$sort], $direction)
+            ->orderByDesc('id')
+            ->paginate($perPage)
             ->withQueryString()
             ->through(fn (Shift $shift): array => [
                 'id' => $shift->id,
@@ -42,6 +68,12 @@ class PosShiftController extends Controller
             ]);
 
         return Inertia::render('pos/shifts', [
+            'filters' => [
+                'search' => $search,
+                'sort' => $sort,
+                'direction' => $direction,
+                'per_page' => $perPage,
+            ],
             'shifts' => $shifts,
         ]);
     }

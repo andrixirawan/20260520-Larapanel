@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
+use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -144,6 +145,12 @@ class PostController extends Controller
     private function filteredPosts(Request $request): LengthAwarePaginator
     {
         $filters = $this->postFilters($request);
+        $sortColumns = [
+            'id' => 'id',
+            'title' => 'title',
+            'author' => 'author',
+            'created_at' => 'created_at',
+        ];
 
         return Post::query()
             ->when($filters['search'], function ($query, string $search) {
@@ -156,36 +163,25 @@ class PostController extends Controller
                 });
             })
             ->when($filters['author'], fn ($query, string $author) => $query->where('author', 'like', "%{$author}%"))
-            ->when(
-                $filters['sort'] === 'oldest',
-                fn ($query) => $query->oldest(),
-                fn ($query) => $query->when(
-                    $filters['sort'] === 'title',
-                    fn ($query) => $query->orderBy('title')->orderByDesc('id'),
-                    fn ($query) => $query->when(
-                        $filters['sort'] === 'author',
-                        fn ($query) => $query->orderBy('author')->orderByDesc('id'),
-                        fn ($query) => $query->latest(),
-                    ),
-                ),
-            )
+            ->orderBy($sortColumns[$filters['sort']], $filters['direction'])
+            ->orderByDesc('id')
             ->paginate($filters['per_page'])
             ->withQueryString();
     }
 
     /**
-     * @return array{search: string, author: string, sort: string, per_page: int}
+     * @return array{search: string, author: string, sort: string, direction: string, per_page: int}
      */
     private function postFilters(Request $request): array
     {
-        $sort = $request->string('sort')->toString();
-        $perPage = $request->integer('per_page', 10);
+        $sortOptions = $this->sortOptions();
 
         return [
-            'search' => trim($request->string('search')->toString()),
+            'search' => TableQuery::search($request),
             'author' => trim($request->string('author')->toString()),
-            'sort' => array_key_exists($sort, $this->sortOptions()) ? $sort : 'latest',
-            'per_page' => in_array($perPage, [5, 10, 15, 25], true) ? $perPage : 10,
+            'sort' => TableQuery::sort($request, $sortOptions, 'created_at'),
+            'direction' => TableQuery::direction($request),
+            'per_page' => TableQuery::perPage($request),
         ];
     }
 
@@ -195,10 +191,10 @@ class PostController extends Controller
     private function sortOptions(): array
     {
         return [
-            'latest' => __('Newest first'),
-            'oldest' => __('Oldest first'),
-            'title' => __('Title A-Z'),
-            'author' => __('Author A-Z'),
+            'id' => __('ID'),
+            'title' => __('Title'),
+            'author' => __('Author'),
+            'created_at' => __('Created at'),
         ];
     }
 

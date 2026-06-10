@@ -7,6 +7,7 @@ use App\Models\Pos\Payment;
 use App\Models\Pos\Sale;
 use App\Services\Pos\PosSaleService;
 use App\Support\AccessControl;
+use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,14 +23,25 @@ class PosSaleController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $search = trim($request->string('search')->toString());
+        $search = TableQuery::search($request);
+        $sortOptions = [
+            'invoice_number' => 'invoice_number',
+            'status' => 'status',
+            'payment_status' => 'payment_status',
+            'total' => 'total',
+            'created_at' => 'created_at',
+        ];
+        $sort = TableQuery::sort($request, $sortOptions, 'created_at');
+        $direction = TableQuery::direction($request);
+        $perPage = TableQuery::perPage($request);
 
         $sales = Sale::query()
             ->with(['cashier:id,name', 'payments:id,sale_id,method,amount'])
             ->when(! $user->can(AccessControl::PERMISSION_POS_SHIFTS_MANAGE), fn ($query) => $query->where('cashier_id', $user->id))
             ->when($search !== '', fn ($query) => $query->where('invoice_number', 'like', "%{$search}%"))
-            ->latest()
-            ->paginate(10)
+            ->orderBy($sortOptions[$sort], $direction)
+            ->orderByDesc('id')
+            ->paginate($perPage)
             ->withQueryString()
             ->through(fn (Sale $sale): array => [
                 'id' => $sale->id,
@@ -43,7 +55,12 @@ class PosSaleController extends Controller
             ]);
 
         return Inertia::render('pos/sales', [
-            'filters' => ['search' => $search],
+            'filters' => [
+                'search' => $search,
+                'sort' => $sort,
+                'direction' => $direction,
+                'per_page' => $perPage,
+            ],
             'sales' => $sales,
         ]);
     }

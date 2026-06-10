@@ -1,0 +1,1 @@
+var e=`id-ID`,t=`Asia/Jakarta`,n=[5,10,15,25,50],r={dateStyle:`medium`,timeStyle:`short`,timeZone:t};export{r as n,n as r,e as t};

@@ -1,174 +1,169 @@
 import { Head, Link } from '@inertiajs/react';
-import { ReceiptText, Search } from 'lucide-react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { ReceiptText, Wallet } from 'lucide-react';
+import { useMemo } from 'react';
+import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { TableFilters } from '@/types/pagination';
 import type { Paginated, PosSaleListItem } from './types';
-
-const currency = new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-});
+import { formatPosDateTime, posCurrency } from './utils';
 
 export default function PosSales({
     sales,
     filters,
 }: {
     sales: Paginated<PosSaleListItem>;
-    filters: { search: string };
+    filters: TableFilters;
 }) {
+    const grossVisible = sales.data.reduce((sum, sale) => sum + sale.total, 0);
+    const paidCount = sales.data.filter(
+        (sale) => sale.payment_status === 'paid',
+    ).length;
+    const columns = useMemo<ColumnDef<PosSaleListItem>[]>(
+        () => [
+            {
+                id: 'invoice_number',
+                accessorKey: 'invoice_number',
+                header: 'Invoice',
+                cell: ({ row }) => (
+                    <>
+                        <Link
+                            href={`/pos/sales/${row.original.id}`}
+                            className="font-medium hover:underline"
+                        >
+                            {row.original.invoice_number}
+                        </Link>
+                        <div className="text-xs text-muted-foreground">
+                            {formatPosDateTime(row.original.created_at)}
+                        </div>
+                    </>
+                ),
+            },
+            {
+                id: 'cashier',
+                header: 'Cashier',
+                enableSorting: false,
+                cell: ({ row }) => row.original.cashier ?? '-',
+            },
+            {
+                id: 'payment_method',
+                header: 'Payment',
+                enableSorting: false,
+                cell: ({ row }) => (
+                    <Badge variant="outline">
+                        {row.original.payment_method ?? '-'}
+                    </Badge>
+                ),
+            },
+            {
+                id: 'status',
+                accessorKey: 'status',
+                header: 'Status',
+                cell: ({ row }) => (
+                    <div className="flex flex-wrap gap-2">
+                        <Badge>{row.original.status}</Badge>
+                        <Badge variant="secondary">
+                            {row.original.payment_status}
+                        </Badge>
+                    </div>
+                ),
+            },
+            {
+                id: 'total',
+                accessorKey: 'total',
+                header: 'Total',
+                meta: {
+                    headerClassName: 'text-right',
+                    cellClassName: 'text-right font-semibold',
+                },
+                cell: ({ row }) => posCurrency.format(row.original.total),
+            },
+        ],
+        [],
+    );
+
     return (
         <>
             <Head title="POS Sales" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <Heading
                         title="POS Sales"
-                        description="Shift-bound invoices and payment history."
+                        description="Invoice history, payment snapshots, and cashier traceability."
                     />
 
-                    <Button asChild variant="outline" className="w-fit">
-                        <Link href="/pos">
-                            <ReceiptText />
-                            Open terminal
-                        </Link>
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button asChild variant="outline">
+                            <Link href="/pos">
+                                <ReceiptText />
+                                Open terminal
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
-                <form
-                    action="/pos/sales"
-                    method="get"
-                    className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-[1fr_auto]"
-                >
-                    <div className="relative">
-                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            name="search"
-                            defaultValue={filters.search}
-                            placeholder="Search invoice number"
-                            className="pl-9"
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[
+                        {
+                            icon: ReceiptText,
+                            label: 'Visible invoices',
+                            value: `${sales.data.length}`,
+                        },
+                        {
+                            icon: Wallet,
+                            label: 'Visible gross',
+                            value: posCurrency.format(grossVisible),
+                        },
+                        {
+                            icon: Wallet,
+                            label: 'Paid status',
+                            value: `${paidCount}/${sales.data.length}`,
+                        },
+                    ].map((item) => (
+                        <Card key={item.label}>
+                            <CardContent className="flex items-center gap-4 p-5">
+                                <div className="rounded-2xl bg-muted p-3">
+                                    <item.icon className="size-5" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-muted-foreground">
+                                        {item.label}
+                                    </div>
+                                    <div className="text-lg font-semibold">
+                                        {item.value}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                <Card>
+                    <CardHeader className="flex flex-col gap-4 border-b sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <CardTitle>Invoice register</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                Search by invoice number and inspect the final
+                                transaction snapshot.
+                            </p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                        <DataTable
+                            columns={columns}
+                            data={sales}
+                            filters={filters}
+                            route="/pos/sales"
+                            searchPlaceholder="Search invoice number"
+                            emptyMessage="No sales found"
+                            totalLabel="sales"
                         />
-                    </div>
-                    <div className="flex gap-2">
-                        <Button type="submit">Search</Button>
-                        {filters.search && (
-                            <Button asChild variant="ghost">
-                                <Link href="/pos/sales">Reset</Link>
-                            </Button>
-                        )}
-                    </div>
-                </form>
-
-                <div className="overflow-hidden rounded-lg border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Invoice</TableHead>
-                                <TableHead>Cashier</TableHead>
-                                <TableHead>Payment</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">
-                                    Total
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sales.data.length ? (
-                                sales.data.map((sale) => (
-                                    <TableRow key={sale.id}>
-                                        <TableCell>
-                                            <Link
-                                                href={`/pos/sales/${sale.id}`}
-                                                className="font-medium hover:underline"
-                                            >
-                                                {sale.invoice_number}
-                                            </Link>
-                                            <div className="text-xs text-muted-foreground">
-                                                {sale.created_at
-                                                    ? new Date(
-                                                          sale.created_at,
-                                                      ).toLocaleString('id-ID')
-                                                    : '-'}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {sale.cashier ?? '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline">
-                                                {sale.payment_method ?? '-'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-wrap gap-2">
-                                                <Badge>{sale.status}</Badge>
-                                                <Badge variant="secondary">
-                                                    {sale.payment_status}
-                                                </Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right font-semibold">
-                                            {currency.format(sale.total)}
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={5}
-                                        className="h-32 text-center text-muted-foreground"
-                                    >
-                                        No sales yet.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-
-                <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                    <span>
-                        Showing {sales.from ?? 0} to {sales.to ?? 0} of{' '}
-                        {sales.total} sales
-                    </span>
-                    <div className="flex gap-2">
-                        <Button
-                            asChild={Boolean(sales.prev_page_url)}
-                            variant="outline"
-                            size="sm"
-                            disabled={!sales.prev_page_url}
-                        >
-                            {sales.prev_page_url ? (
-                                <Link href={sales.prev_page_url}>Previous</Link>
-                            ) : (
-                                <span>Previous</span>
-                            )}
-                        </Button>
-                        <Button
-                            asChild={Boolean(sales.next_page_url)}
-                            variant="outline"
-                            size="sm"
-                            disabled={!sales.next_page_url}
-                        >
-                            {sales.next_page_url ? (
-                                <Link href={sales.next_page_url}>Next</Link>
-                            ) : (
-                                <span>Next</span>
-                            )}
-                        </Button>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             </div>
         </>
     );

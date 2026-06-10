@@ -1,309 +1,588 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { Boxes, Plus, Search } from 'lucide-react';
-import Heading from '@/components/heading';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import type { ColumnDef } from '@tanstack/react-table';
+import {
+    ArrowUpDown,
+    Boxes,
+    ClipboardList,
+    Loader2,
+    PackagePlus,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { DataTable } from '@/components/data-table';
+import {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+} from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import type { Auth } from '@/types';
+import type { TableFilters } from '@/types/pagination';
 import type { Paginated, PosProductRow } from './types';
+import { firstErrorMessage, posCurrency } from './utils';
 
-const currency = new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-});
+type ProductFormState = {
+    name: string;
+    sku: string;
+    price: string;
+    cost_price: string;
+    initial_quantity: string;
+    description: string;
+    track_inventory: boolean;
+    allow_backorder: boolean;
+};
+
+const initialProductForm: ProductFormState = {
+    name: '',
+    sku: '',
+    price: '',
+    cost_price: '',
+    initial_quantity: '',
+    description: '',
+    track_inventory: true,
+    allow_backorder: false,
+};
 
 export default function PosProducts({
     products,
     filters,
 }: {
     products: Paginated<PosProductRow>;
-    filters: { search: string };
+    filters: TableFilters;
 }) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const canManageProducts = auth.permissions['pos.products.manage'];
     const canManageInventory = auth.permissions['pos.inventory.manage'];
+    const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+    const [productForm, setProductForm] =
+        useState<ProductFormState>(initialProductForm);
+    const [adjustment, setAdjustment] = useState({
+        quantity_delta: '',
+        notes: '',
+    });
+    const [selectedProduct, setSelectedProduct] = useState<PosProductRow | null>(
+        null,
+    );
+    const [isCreating, setIsCreating] = useState(false);
+    const [isAdjusting, setIsAdjusting] = useState(false);
+    const columns = useMemo<ColumnDef<PosProductRow>[]>(
+        () => [
+            {
+                id: 'name',
+                accessorKey: 'name',
+                header: 'Product',
+                cell: ({ row }) => (
+                    <>
+                        <div className="font-medium">{row.original.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                            {row.original.sku ?? 'No SKU'}
+                        </div>
+                    </>
+                ),
+            },
+            {
+                id: 'price',
+                header: 'Price',
+                enableSorting: false,
+                cell: ({ row }) => (
+                    <>
+                        <div className="font-medium">
+                            {posCurrency.format(row.original.price)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                            Cost:{' '}
+                            {row.original.cost_price === null
+                                ? '-'
+                                : posCurrency.format(row.original.cost_price)}
+                        </div>
+                    </>
+                ),
+            },
+            {
+                id: 'stock',
+                header: 'Stock',
+                enableSorting: false,
+                cell: ({ row }) =>
+                    row.original.track_inventory ? (
+                        <Badge
+                            variant={
+                                row.original.stock <= 0
+                                    ? 'destructive'
+                                    : 'outline'
+                            }
+                        >
+                            {row.original.stock}
+                        </Badge>
+                    ) : (
+                        <Badge variant="secondary">Not tracked</Badge>
+                    ),
+            },
+            {
+                id: 'status',
+                accessorKey: 'status',
+                header: 'Status',
+                cell: ({ row }) => (
+                    <Badge
+                        variant={
+                            row.original.status === 'active'
+                                ? 'default'
+                                : 'secondary'
+                        }
+                    >
+                        {row.original.status}
+                    </Badge>
+                ),
+            },
+            {
+                id: 'action',
+                header: 'Action',
+                enableSorting: false,
+                meta: {
+                    headerClassName: 'text-right',
+                    cellClassName: 'text-right',
+                },
+                cell: ({ row }) =>
+                    canManageInventory && row.original.product_variant_id ? (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                                setSelectedProduct(row.original);
+                                setAdjustDialogOpen(true);
+                            }}
+                        >
+                            Adjust stock
+                        </Button>
+                    ) : (
+                        <span className="text-sm text-muted-foreground">
+                            No access
+                        </span>
+                    ),
+            },
+        ],
+        [canManageInventory],
+    );
+
+    const totalVisibleStock = products.data.reduce(
+        (sum, product) => sum + (product.track_inventory ? product.stock : 0),
+        0,
+    );
+    const activeCount = products.data.filter(
+        (product) => product.status === 'active',
+    ).length;
+
+    const createProduct = () => {
+        const loadingToast = toast.loading('Creating product...');
+
+        router.post(
+            '/pos/products',
+            {
+                ...productForm,
+                track_inventory: productForm.track_inventory ? 1 : 0,
+                allow_backorder: productForm.allow_backorder ? 1 : 0,
+            },
+            {
+                preserveScroll: true,
+                onStart: () => setIsCreating(true),
+                onError: (errors) =>
+                    toast.error(firstErrorMessage(errors), {
+                        id: loadingToast,
+                    }),
+                onSuccess: () => {
+                    setCreateDialogOpen(false);
+                    setProductForm(initialProductForm);
+                },
+                onFinish: () => {
+                    setIsCreating(false);
+                    toast.dismiss(loadingToast);
+                },
+            },
+        );
+    };
+
+    const adjustStock = () => {
+        if (!selectedProduct?.product_variant_id) {
+            return;
+        }
+
+        const loadingToast = toast.loading('Applying stock adjustment...');
+
+        router.post(
+            `/pos/product-variants/${selectedProduct.product_variant_id}/stock-adjustments`,
+            adjustment,
+            {
+                preserveScroll: true,
+                onStart: () => setIsAdjusting(true),
+                onError: (errors) =>
+                    toast.error(firstErrorMessage(errors), {
+                        id: loadingToast,
+                    }),
+                onSuccess: () => {
+                    setAdjustDialogOpen(false);
+                    setSelectedProduct(null);
+                    setAdjustment({ quantity_delta: '', notes: '' });
+                },
+                onFinish: () => {
+                    setIsAdjusting(false);
+                    toast.dismiss(loadingToast);
+                },
+            },
+        );
+    };
 
     return (
         <>
             <Head title="POS Products" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <Heading
-                        title="POS Products"
-                        description="Manage saleable products and inventory stock for POS."
-                    />
+                <Card className="relative overflow-hidden border-none bg-[linear-gradient(135deg,rgba(17,24,39,1),rgba(8,145,178,0.92),rgba(249,115,22,0.86))] text-white shadow-xl">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.14),transparent_26%)]" />
+                    <CardContent className="relative p-6 md:p-7">
+                        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                            <div className="space-y-3">
+                                <Badge className="bg-white/14 text-white hover:bg-white/14">
+                                    Catalog and inventory desk
+                                </Badge>
+                                <div>
+                                    <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                                        Product and inventory control
+                                    </h1>
+                                    <p className="mt-2 max-w-2xl text-sm leading-6 text-white/76">
+                                        Seluruh produk POS saat ini dibuat sebagai
+                                        single default variant. Struktur ini
+                                        sengaja dijaga agar nanti size, color,
+                                        atau variant lain bisa masuk tanpa
+                                        memecah histori transaksi.
+                                    </p>
+                                </div>
+                            </div>
 
-                    <Button asChild variant="outline" className="w-fit">
-                        <Link href="/pos">
-                            <Boxes />
-                            Open terminal
-                        </Link>
-                    </Button>
+                            <div className="flex flex-wrap gap-2">
+                                {canManageProducts && (
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => setCreateDialogOpen(true)}
+                                    >
+                                        <PackagePlus />
+                                        New product
+                                    </Button>
+                                )}
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                                >
+                                    <Link href="/pos">
+                                        <Boxes />
+                                        Open terminal
+                                    </Link>
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[
+                        {
+                            icon: ClipboardList,
+                            label: 'Visible products',
+                            value: `${products.total}`,
+                        },
+                        {
+                            icon: Boxes,
+                            label: 'Active on this page',
+                            value: `${activeCount}/${products.data.length}`,
+                        },
+                        {
+                            icon: ArrowUpDown,
+                            label: 'Tracked stock visible',
+                            value: `${totalVisibleStock}`,
+                        },
+                    ].map((item) => (
+                        <Card key={item.label}>
+                            <CardContent className="flex items-center gap-4 p-5">
+                                <div className="rounded-2xl bg-muted p-3">
+                                    <item.icon className="size-5" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-muted-foreground">
+                                        {item.label}
+                                    </div>
+                                    <div className="text-lg font-semibold">
+                                        {item.value}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
                 </div>
 
-                {canManageProducts && (
+                <Alert>
+                    <Boxes />
+                    <AlertTitle>Single-variant mode</AlertTitle>
+                    <AlertDescription>
+                        Produk baru masih dibuat sebagai default variant.
+                        Inventory, pricing, dan historinya sudah disiapkan agar
+                        nanti mudah naik ke multi-variant.
+                    </AlertDescription>
+                </Alert>
+
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
                     <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Plus className="size-5" />
-                                New product
-                            </CardTitle>
+                        <CardHeader className="flex flex-col gap-4 border-b sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <CardTitle>Catalog table</CardTitle>
+                                <p className="text-sm text-muted-foreground">
+                                    Search, review stock, and trigger adjustments.
+                                </p>
+                            </div>
                         </CardHeader>
-                        <CardContent>
-                            <Form
-                                action="/pos/products"
-                                method="post"
-                                className="grid gap-3 lg:grid-cols-6"
-                            >
-                                {({ processing }) => (
-                                    <>
-                                        <Input
-                                            name="name"
-                                            placeholder="Product name"
-                                            className="lg:col-span-2"
-                                            required
-                                        />
-                                        <Input name="sku" placeholder="SKU" />
-                                        <Input
-                                            type="number"
-                                            name="price"
-                                            min="0.01"
-                                            step="0.01"
-                                            placeholder="Price"
-                                            required
-                                        />
-                                        <Input
-                                            type="number"
-                                            name="cost_price"
-                                            min="0"
-                                            step="0.01"
-                                            placeholder="Cost"
-                                        />
-                                        <Input
-                                            type="number"
-                                            name="initial_quantity"
-                                            min="0"
-                                            step="0.001"
-                                            placeholder="Initial stock"
-                                        />
-                                        <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                                            <input
-                                                type="checkbox"
-                                                name="track_inventory"
-                                                value="1"
-                                                defaultChecked
-                                            />
-                                            Track stock
-                                        </label>
-                                        <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                                            <input
-                                                type="checkbox"
-                                                name="allow_backorder"
-                                                value="1"
-                                            />
-                                            Backorder
-                                        </label>
-                                        <Input
-                                            name="description"
-                                            placeholder="Description"
-                                            className="lg:col-span-3"
-                                        />
-                                        <Button
-                                            type="submit"
-                                            disabled={processing}
-                                            className="lg:col-span-1"
-                                        >
-                                            Create
-                                        </Button>
-                                    </>
-                                )}
-                            </Form>
+                        <CardContent className="p-4">
+                            <DataTable
+                                columns={columns}
+                                data={products}
+                                filters={filters}
+                                route="/pos/products"
+                                searchPlaceholder="Search products"
+                                emptyMessage="No POS products"
+                                totalLabel="products"
+                            />
                         </CardContent>
                     </Card>
-                )}
 
-                <form
-                    action="/pos/products"
-                    method="get"
-                    className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-[1fr_auto]"
-                >
-                    <div className="relative">
-                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Current scope</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4 text-sm text-muted-foreground">
+                            <div className="rounded-2xl border bg-muted/40 p-4">
+                                Administrator membuat produk, mengatur stok,
+                                dan menyiapkan katalog untuk cashier.
+                            </div>
+                            <div className="rounded-2xl border bg-muted/40 p-4">
+                                Flow adjustment stock menggunakan ledger,
+                                bukan overwrite quantity langsung.
+                            </div>
+                            <div className="rounded-2xl border bg-muted/40 p-4">
+                                Split role inventory manager bisa ditambah
+                                nanti tanpa mengubah UI dasar terminal cashier.
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+            </div>
+
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Create POS product</DialogTitle>
+                        <DialogDescription>
+                            Produk akan dibuat bersama default variant dan siap
+                            dipakai di terminal.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 md:grid-cols-2">
                         <Input
-                            name="search"
-                            defaultValue={filters.search}
-                            placeholder="Search products, SKU, or barcode"
-                            className="pl-9"
+                            value={productForm.name}
+                            onChange={(event) =>
+                                setProductForm((state) => ({
+                                    ...state,
+                                    name: event.target.value,
+                                }))
+                            }
+                            placeholder="Product name"
+                        />
+                        <Input
+                            value={productForm.sku}
+                            onChange={(event) =>
+                                setProductForm((state) => ({
+                                    ...state,
+                                    sku: event.target.value,
+                                }))
+                            }
+                            placeholder="SKU"
+                        />
+                        <Input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={productForm.price}
+                            onChange={(event) =>
+                                setProductForm((state) => ({
+                                    ...state,
+                                    price: event.target.value,
+                                }))
+                            }
+                            placeholder="Price"
+                        />
+                        <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={productForm.cost_price}
+                            onChange={(event) =>
+                                setProductForm((state) => ({
+                                    ...state,
+                                    cost_price: event.target.value,
+                                }))
+                            }
+                            placeholder="Cost price"
+                        />
+                        <Input
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            value={productForm.initial_quantity}
+                            onChange={(event) =>
+                                setProductForm((state) => ({
+                                    ...state,
+                                    initial_quantity: event.target.value,
+                                }))
+                            }
+                            placeholder="Initial stock"
+                        />
+                        <div className="grid gap-3 rounded-xl border p-4">
+                            <label className="flex items-center gap-3 text-sm font-medium">
+                                <Checkbox
+                                    checked={productForm.track_inventory}
+                                    onCheckedChange={(checked) =>
+                                        setProductForm((state) => ({
+                                            ...state,
+                                            track_inventory: Boolean(checked),
+                                        }))
+                                    }
+                                />
+                                Track inventory
+                            </label>
+                            <label className="flex items-center gap-3 text-sm font-medium">
+                                <Checkbox
+                                    checked={productForm.allow_backorder}
+                                    onCheckedChange={(checked) =>
+                                        setProductForm((state) => ({
+                                            ...state,
+                                            allow_backorder: Boolean(checked),
+                                        }))
+                                    }
+                                />
+                                Allow backorder
+                            </label>
+                        </div>
+                        <div className="md:col-span-2">
+                            <Textarea
+                                value={productForm.description}
+                                onChange={(event) =>
+                                    setProductForm((state) => ({
+                                        ...state,
+                                        description: event.target.value,
+                                    }))
+                                }
+                                placeholder="Description"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setCreateDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={createProduct}
+                            disabled={!productForm.name || !productForm.price || isCreating}
+                        >
+                            {isCreating ? (
+                                <Loader2 className="animate-spin" />
+                            ) : (
+                                <PackagePlus />
+                            )}
+                            Create product
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Adjust stock</DialogTitle>
+                        <DialogDescription>
+                            {selectedProduct
+                                ? `Apply stock movement for ${selectedProduct.name}.`
+                                : 'Select a product to adjust.'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        {selectedProduct && (
+                            <div className="rounded-xl border bg-muted/40 p-4 text-sm">
+                                <div className="font-medium">
+                                    {selectedProduct.name}
+                                </div>
+                                <div className="mt-1 text-muted-foreground">
+                                    Current stock: {selectedProduct.stock}
+                                </div>
+                            </div>
+                        )}
+                        <Input
+                            type="number"
+                            step="0.001"
+                            value={adjustment.quantity_delta}
+                            onChange={(event) =>
+                                setAdjustment((state) => ({
+                                    ...state,
+                                    quantity_delta: event.target.value,
+                                }))
+                            }
+                            placeholder="+/- quantity"
+                        />
+                        <Textarea
+                            value={adjustment.notes}
+                            onChange={(event) =>
+                                setAdjustment((state) => ({
+                                    ...state,
+                                    notes: event.target.value,
+                                }))
+                            }
+                            placeholder="Reason for adjustment"
                         />
                     </div>
-                    <div className="flex gap-2">
-                        <Button type="submit">Search</Button>
-                        {filters.search && (
-                            <Button asChild variant="ghost">
-                                <Link href="/pos/products">Reset</Link>
-                            </Button>
-                        )}
-                    </div>
-                </form>
-
-                <div className="overflow-hidden rounded-lg border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Product</TableHead>
-                                <TableHead>Price</TableHead>
-                                <TableHead>Stock</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="w-[320px]">
-                                    Inventory adjustment
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {products.data.length ? (
-                                products.data.map((product) => (
-                                    <TableRow key={product.id}>
-                                        <TableCell>
-                                            <div className="font-medium">
-                                                {product.name}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {product.sku ?? 'No SKU'}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {currency.format(product.price)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {product.track_inventory ? (
-                                                <Badge
-                                                    variant={
-                                                        product.stock <= 0
-                                                            ? 'destructive'
-                                                            : 'outline'
-                                                    }
-                                                >
-                                                    {product.stock}
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="secondary">
-                                                    Not tracked
-                                                </Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant={
-                                                    product.status === 'active'
-                                                        ? 'default'
-                                                        : 'secondary'
-                                                }
-                                            >
-                                                {product.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            {canManageInventory &&
-                                            product.product_variant_id ? (
-                                                <Form
-                                                    action={`/pos/product-variants/${product.product_variant_id}/stock-adjustments`}
-                                                    method="post"
-                                                    className="grid gap-2 sm:grid-cols-[110px_1fr_auto]"
-                                                >
-                                                    {({ processing }) => (
-                                                        <>
-                                                            <Input
-                                                                type="number"
-                                                                name="quantity_delta"
-                                                                step="0.001"
-                                                                placeholder="+/- qty"
-                                                                required
-                                                            />
-                                                            <Input
-                                                                name="notes"
-                                                                placeholder="Reason"
-                                                            />
-                                                            <Button
-                                                                type="submit"
-                                                                size="sm"
-                                                                variant="outline"
-                                                                disabled={
-                                                                    processing
-                                                                }
-                                                            >
-                                                                Apply
-                                                            </Button>
-                                                        </>
-                                                    )}
-                                                </Form>
-                                            ) : (
-                                                <span className="text-sm text-muted-foreground">
-                                                    No access
-                                                </span>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={5}
-                                        className="h-32 text-center text-muted-foreground"
-                                    >
-                                        No POS products yet.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-
-                <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                    <span>
-                        Showing {products.from ?? 0} to {products.to ?? 0} of{' '}
-                        {products.total} products
-                    </span>
-                    <div className="flex gap-2">
+                    <DialogFooter>
                         <Button
-                            asChild={Boolean(products.prev_page_url)}
                             variant="outline"
-                            size="sm"
-                            disabled={!products.prev_page_url}
+                            onClick={() => setAdjustDialogOpen(false)}
                         >
-                            {products.prev_page_url ? (
-                                <Link href={products.prev_page_url}>
-                                    Previous
-                                </Link>
-                            ) : (
-                                <span>Previous</span>
-                            )}
+                            Cancel
                         </Button>
                         <Button
-                            asChild={Boolean(products.next_page_url)}
-                            variant="outline"
-                            size="sm"
-                            disabled={!products.next_page_url}
+                            onClick={adjustStock}
+                            disabled={!adjustment.quantity_delta || isAdjusting}
                         >
-                            {products.next_page_url ? (
-                                <Link href={products.next_page_url}>Next</Link>
+                            {isAdjusting ? (
+                                <Loader2 className="animate-spin" />
                             ) : (
-                                <span>Next</span>
+                                <ArrowUpDown />
                             )}
+                            Apply adjustment
                         </Button>
-                    </div>
-                </div>
-            </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

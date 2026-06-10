@@ -1,3 +1,5 @@
+import type { Paginated } from '@/types/pagination';
+
 export type Post = {
     id: number;
     title: string;
@@ -10,21 +12,12 @@ export type Post = {
     updated_at: string;
 };
 
-export type Paginated<T> = {
-    data: T[];
-    current_page: number;
-    from: number | null;
-    last_page: number;
-    next_page_url: string | null;
-    per_page: number;
-    prev_page_url: string | null;
-    to: number | null;
-    total: number;
-};
-
 export type PostFilters = {
     search: string;
     author: string;
     sort: string;
+    direction: 'asc' | 'desc';
     per_page: number;
 };
+
+export type { Paginated };

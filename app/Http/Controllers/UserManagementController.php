@@ -6,6 +6,7 @@ use App\Http\Requests\UserManagement\UpdateUserRequest;
 use App\Models\User;
 use App\Services\UserManagementService;
 use App\Support\AccessControl;
+use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,7 +20,15 @@ class UserManagementController extends Controller
 
     public function index(Request $request): Response
     {
-        $search = trim((string) $request->string('search'));
+        $search = TableQuery::search($request);
+        $sortOptions = [
+            'name' => 'name',
+            'email' => 'email',
+            'created_at' => 'created_at',
+        ];
+        $sort = TableQuery::sort($request, $sortOptions, 'name');
+        $direction = TableQuery::direction($request, 'asc');
+        $perPage = TableQuery::perPage($request);
 
         $users = User::query()
             ->with('roles:id,name')
@@ -30,8 +39,9 @@ class UserManagementController extends Controller
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
-            ->orderBy('name')
-            ->paginate(10)
+            ->orderBy($sortOptions[$sort], $direction)
+            ->orderBy('id')
+            ->paginate($perPage)
             ->withQueryString()
             ->through(fn (User $user): array => [
                 'id' => $user->id,
@@ -44,6 +54,9 @@ class UserManagementController extends Controller
         return Inertia::render('users/index', [
             'filters' => [
                 'search' => $search,
+                'sort' => $sort,
+                'direction' => $direction,
+                'per_page' => $perPage,
             ],
             'roles' => AccessControl::roles(),
             'users' => $users,

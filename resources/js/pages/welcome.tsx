@@ -1,5 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ImageIcon, Search } from 'lucide-react';
+import { ImageIcon } from 'lucide-react';
+import { useState } from 'react';
+import { SearchInput } from '@/components/search-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Paginated, Post, PostFilters } from './posts/types';
@@ -24,8 +26,12 @@ export default function Welcome({
     sortOptions: Record<string, string>;
 }) {
     const { auth } = usePage<PageProps>().props;
+    const [search, setSearch] = useState(filters.search);
     const hasFilters = Boolean(
-        filters.search || filters.author || filters.sort !== 'latest',
+        filters.search ||
+            filters.author ||
+            filters.sort !== 'created_at' ||
+            filters.direction !== 'desc',
     );
 
     return (
@@ -71,17 +77,13 @@ export default function Welcome({
                     <form
                         action="/"
                         method="get"
-                        className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_160px_120px_auto]"
+                        className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_140px_120px_120px_auto]"
                     >
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                name="search"
-                                defaultValue={filters.search}
-                                placeholder="Search posts"
-                                className="pl-9"
-                            />
-                        </div>
+                        <SearchInput
+                            value={search}
+                            onValueChange={setSearch}
+                            placeholder="Search posts"
+                        />
 
                         <Input
                             name="author"
@@ -104,6 +106,15 @@ export default function Welcome({
                         </select>
 
                         <select
+                            name="direction"
+                            defaultValue={filters.direction}
+                            className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        >
+                            <option value="desc">Desc</option>
+                            <option value="asc">Asc</option>
+                        </select>
+
+                        <select
                             name="per_page"
                             defaultValue={filters.per_page}
                             className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -116,8 +127,12 @@ export default function Welcome({
                         </select>
 
                         <div className="flex gap-2">
-                            <Button type="submit" size="sm">
-                                Apply
+                            <Button
+                                type="submit"
+                                size="sm"
+                                disabled={!search.trim()}
+                            >
+                                Search
                             </Button>
                             {hasFilters && (
                                 <Button asChild variant="ghost" size="sm">

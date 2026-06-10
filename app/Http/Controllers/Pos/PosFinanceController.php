@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pos;
 
 use App\Http\Controllers\Controller;
 use App\Models\Pos\FinanceEntry;
+use App\Support\TableQuery;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -12,10 +13,38 @@ class PosFinanceController extends Controller
 {
     public function __invoke(Request $request): Response
     {
+        $search = TableQuery::search($request);
+        $sortOptions = [
+            'entry_date' => 'entry_date',
+            'type' => 'type',
+            'direction' => 'direction',
+            'payment_method' => 'payment_method',
+            'amount' => 'amount',
+            'created_at' => 'created_at',
+        ];
+        $sort = TableQuery::sort($request, $sortOptions, 'created_at');
+        $direction = TableQuery::direction($request);
+        $perPage = TableQuery::perPage($request, 15);
+
         $entries = FinanceEntry::query()
             ->with(['shift:id,cashier_id,opened_at', 'creator:id,name'])
-            ->latest()
-            ->paginate(15)
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($builder) use ($search): void {
+                    $builder
+                        ->where('type', 'like', "%{$search}%")
+                        ->orWhere('direction', 'like', "%{$search}%")
+                        ->orWhere('payment_method', 'like', "%{$search}%")
+                        ->orWhere('notes', 'like', "%{$search}%")
+                        ->orWhereHas('creator', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"));
+
+                    if (is_numeric($search)) {
+                        $builder->orWhere('shift_id', (int) $search);
+                    }
+                });
+            })
+            ->orderBy($sortOptions[$sort], $direction)
+            ->orderByDesc('id')
+            ->paginate($perPage)
             ->withQueryString()
             ->through(fn (FinanceEntry $entry): array => [
                 'id' => $entry->id,
@@ -31,6 +60,12 @@ class PosFinanceController extends Controller
             ]);
 
         return Inertia::render('pos/finance', [
+            'filters' => [
+                'search' => $search,
+                'sort' => $sort,
+                'direction' => $direction,
+                'per_page' => $perPage,
+            ],
             'entries' => $entries,
         ]);
     }

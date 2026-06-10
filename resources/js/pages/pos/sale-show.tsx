@@ -1,16 +1,18 @@
 import { Head, Link } from '@inertiajs/react';
+import type { ColumnDef } from '@tanstack/react-table';
+import {
+    BadgeCheck,
+    ReceiptText,
+    ShoppingBasket,
+    WalletCards,
+} from 'lucide-react';
+import { useMemo } from 'react';
+import { ClientDataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { formatPosDateTime, posCurrency } from './utils';
 
 type SaleDetail = {
     id: number;
@@ -42,156 +44,246 @@ type SaleDetail = {
     }>;
 };
 
-const currency = new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-});
-
 export default function PosSaleShow({ sale }: { sale: SaleDetail }) {
+    const itemColumns = useMemo<ColumnDef<SaleDetail['items'][number]>[]>(
+        () => [
+            {
+                id: 'name_snapshot',
+                accessorKey: 'name_snapshot',
+                header: 'Product',
+                cell: ({ row }) => (
+                    <>
+                        <div className="font-medium">
+                            {row.original.name_snapshot}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                            {row.original.sku_snapshot ?? 'No SKU'}
+                        </div>
+                    </>
+                ),
+            },
+            {
+                id: 'quantity',
+                accessorKey: 'quantity',
+                header: 'Qty',
+                cell: ({ row }) => Number(row.original.quantity),
+            },
+            {
+                id: 'unit_price',
+                accessorKey: 'unit_price',
+                header: 'Price',
+                cell: ({ row }) =>
+                    posCurrency.format(Number(row.original.unit_price)),
+            },
+            {
+                id: 'line_total',
+                accessorKey: 'line_total',
+                header: 'Line total',
+                meta: {
+                    headerClassName: 'text-right',
+                    cellClassName: 'text-right font-medium',
+                },
+                cell: ({ row }) =>
+                    posCurrency.format(Number(row.original.line_total)),
+            },
+        ],
+        [],
+    );
+
     return (
         <>
             <Head title={sale.invoice_number} />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <Heading
-                        title={sale.invoice_number}
-                        description="Invoice snapshot, payment, and sold items."
-                    />
-
-                    <Button asChild variant="outline" className="w-fit">
-                        <Link href="/pos/sales">Back to sales</Link>
-                    </Button>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Status</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex gap-2">
-                            <Badge>{sale.status}</Badge>
-                            <Badge variant="secondary">
-                                {sale.payment_status}
-                            </Badge>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Cashier</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {sale.cashier?.name ?? '-'}
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Total</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-2xl font-semibold">
-                            {currency.format(Number(sale.total))}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Items</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Product</TableHead>
-                                    <TableHead>Qty</TableHead>
-                                    <TableHead>Price</TableHead>
-                                    <TableHead className="text-right">
-                                        Line total
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {sale.items.map((item) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell>
-                                            <div className="font-medium">
-                                                {item.name_snapshot}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {item.sku_snapshot ?? 'No SKU'}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {Number(item.quantity)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {currency.format(
-                                                Number(item.unit_price),
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right font-medium">
-                                            {currency.format(
-                                                Number(item.line_total),
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Payments</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {sale.payments.map((payment) => (
-                            <div
-                                key={payment.id}
-                                className="grid gap-2 rounded-lg border p-3 text-sm md:grid-cols-4"
-                            >
-                                <div>
-                                    <span className="text-muted-foreground">
-                                        Method
-                                    </span>
-                                    <div className="font-medium">
-                                        {payment.method}
-                                    </div>
-                                </div>
-                                <div>
-                                    <span className="text-muted-foreground">
-                                        Amount
-                                    </span>
-                                    <div className="font-medium">
-                                        {currency.format(
-                                            Number(payment.amount),
-                                        )}
-                                    </div>
-                                </div>
-                                <div>
-                                    <span className="text-muted-foreground">
-                                        Change
-                                    </span>
-                                    <div className="font-medium">
-                                        {currency.format(
-                                            Number(payment.change_amount),
-                                        )}
-                                    </div>
-                                </div>
-                                <div>
-                                    <span className="text-muted-foreground">
-                                        Reference
-                                    </span>
-                                    <div className="font-medium">
-                                        {payment.provider_reference ?? '-'}
-                                    </div>
-                                </div>
+                <Card className="relative overflow-hidden border-none bg-[linear-gradient(135deg,rgba(15,23,42,1),rgba(6,95,70,0.94),rgba(8,145,178,0.86))] text-white shadow-xl">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.15),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.12),transparent_28%)]" />
+                    <CardContent className="relative flex flex-col gap-5 p-6 md:p-7 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap gap-2">
+                                <Badge className="bg-white/14 text-white hover:bg-white/14">
+                                    {sale.invoice_number}
+                                </Badge>
+                                <Badge className="bg-white/14 text-white hover:bg-white/14">
+                                    {formatPosDateTime(sale.created_at)}
+                                </Badge>
                             </div>
-                        ))}
+                            <Heading
+                                title={sale.invoice_number}
+                                description="Invoice snapshot, payment trace, and sold item history."
+                            />
+                        </div>
+
+                        <Button
+                            asChild
+                            variant="outline"
+                            className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                        >
+                            <Link href="/pos/sales">Back to sales</Link>
+                        </Button>
                     </CardContent>
                 </Card>
+
+                <div className="grid gap-4 md:grid-cols-4">
+                    {[
+                        {
+                            icon: BadgeCheck,
+                            label: 'Status',
+                            value: sale.status,
+                            extra: sale.payment_status,
+                        },
+                        {
+                            icon: ReceiptText,
+                            label: 'Cashier',
+                            value: sale.cashier?.name ?? '-',
+                            extra: formatPosDateTime(sale.created_at),
+                        },
+                        {
+                            icon: ShoppingBasket,
+                            label: 'Items',
+                            value: `${sale.items.length}`,
+                            extra: posCurrency.format(Number(sale.subtotal)),
+                        },
+                        {
+                            icon: WalletCards,
+                            label: 'Total',
+                            value: posCurrency.format(Number(sale.total)),
+                            extra: `Change ${posCurrency.format(Number(sale.change_total))}`,
+                        },
+                    ].map((item) => (
+                        <Card key={item.label}>
+                            <CardContent className="flex items-center gap-4 p-5">
+                                <div className="rounded-2xl bg-muted p-3">
+                                    <item.icon className="size-5" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-muted-foreground">
+                                        {item.label}
+                                    </div>
+                                    <div className="text-lg font-semibold">
+                                        {item.value}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {item.extra}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.75fr)]">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Sold items</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4">
+                            <ClientDataTable
+                                columns={itemColumns}
+                                data={sale.items}
+                                searchPlaceholder="Search sold items"
+                                emptyMessage="No sold items"
+                                totalLabel="items"
+                            />
+                        </CardContent>
+                    </Card>
+
+                    <div className="space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Payment records</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {sale.payments.map((payment) => (
+                                    <div
+                                        key={payment.id}
+                                        className="rounded-2xl border bg-muted/30 p-4 text-sm"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div className="font-medium">
+                                                    {payment.method}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {payment.status}
+                                                </div>
+                                            </div>
+                                            <Badge variant="outline">
+                                                {posCurrency.format(
+                                                    Number(payment.amount),
+                                                )}
+                                            </Badge>
+                                        </div>
+                                        <div className="mt-4 space-y-2 text-muted-foreground">
+                                            <div className="flex items-center justify-between">
+                                                <span>Received</span>
+                                                <span>
+                                                    {payment.received_amount
+                                                        ? posCurrency.format(
+                                                              Number(
+                                                                  payment.received_amount,
+                                                              ),
+                                                          )
+                                                        : '-'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span>Change</span>
+                                                <span>
+                                                    {posCurrency.format(
+                                                        Number(
+                                                            payment.change_amount,
+                                                        ),
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span>Reference</span>
+                                                <span className="font-medium text-foreground">
+                                                    {payment.provider_reference ??
+                                                        '-'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Invoice summary</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3 text-sm">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground">
+                                        Subtotal
+                                    </span>
+                                    <span>
+                                        {posCurrency.format(
+                                            Number(sale.subtotal),
+                                        )}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground">
+                                        Paid
+                                    </span>
+                                    <span>
+                                        {posCurrency.format(
+                                            Number(sale.paid_total),
+                                        )}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between text-base font-semibold">
+                                    <span>Total</span>
+                                    <span>
+                                        {posCurrency.format(Number(sale.total))}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
             </div>
         </>
     );
