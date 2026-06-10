@@ -18,6 +18,13 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+        foreach (AccessControl::userPermissions() as $permission) {
+            Permission::firstOrCreate([
+                'name' => $permission,
+                'guard_name' => 'web',
+            ]);
+        }
+
         foreach (AccessControl::postPermissions() as $permission) {
             Permission::firstOrCreate([
                 'name' => $permission,
@@ -35,13 +42,22 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
 
+        $cashier = Role::firstOrCreate([
+            'name' => AccessControl::ROLE_CASHIER,
+            'guard_name' => 'web',
+        ]);
+
         $subscriber = Role::firstOrCreate([
             'name' => AccessControl::ROLE_SUBSCRIBER,
             'guard_name' => 'web',
         ]);
 
         $superAdmin->syncPermissions([]);
-        $administrator->syncPermissions(AccessControl::postPermissions());
+        $administrator->syncPermissions([
+            ...AccessControl::userPermissions(),
+            ...AccessControl::postPermissions(),
+        ]);
+        $cashier->syncPermissions([]);
         $subscriber->syncPermissions([AccessControl::PERMISSION_POSTS_VIEW]);
 
         User::doesntHave('roles')->each(

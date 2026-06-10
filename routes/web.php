@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\GoogleOAuthController;
 use App\Http\Controllers\Debug\AvatarStorageController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\UserManagementController;
 use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +23,14 @@ Route::get('auth/google/redirect', [GoogleOAuthController::class, 'redirect'])
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
+
+    Route::get('users', [UserManagementController::class, 'index'])
+        ->middleware('can:'.AccessControl::PERMISSION_USERS_MANAGE)
+        ->name('users.index');
+
+    Route::patch('users/{user}', [UserManagementController::class, 'update'])
+        ->middleware('can:'.AccessControl::PERMISSION_USERS_MANAGE)
+        ->name('users.update');
 
     Route::resource('posts', PostController::class)
         ->middlewareFor(['index', 'show'], 'can:'.AccessControl::PERMISSION_POSTS_VIEW)

@@ -43,6 +43,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
                 'roles' => fn () => $request->user()?->getRoleNames()->values() ?? [],
                 'permissions' => fn () => [
+                    AccessControl::PERMISSION_USERS_MANAGE => $request->user()?->can(AccessControl::PERMISSION_USERS_MANAGE) ?? false,
                     AccessControl::PERMISSION_POSTS_VIEW => $request->user()?->can(AccessControl::PERMISSION_POSTS_VIEW) ?? false,
                     AccessControl::PERMISSION_POSTS_CREATE => $request->user()?->can(AccessControl::PERMISSION_POSTS_CREATE) ?? false,
                     AccessControl::PERMISSION_POSTS_UPDATE => $request->user()?->can(AccessControl::PERMISSION_POSTS_UPDATE) ?? false,
