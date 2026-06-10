@@ -2,6 +2,11 @@
 
 use App\Http\Controllers\Auth\GoogleOAuthController;
 use App\Http\Controllers\Debug\AvatarStorageController;
+use App\Http\Controllers\Pos\PosFinanceController;
+use App\Http\Controllers\Pos\PosProductController;
+use App\Http\Controllers\Pos\PosSaleController;
+use App\Http\Controllers\Pos\PosShiftController;
+use App\Http\Controllers\Pos\PosTerminalController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserManagementController;
 use App\Support\AccessControl;
@@ -37,6 +42,50 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middlewareFor(['create', 'store'], 'can:'.AccessControl::PERMISSION_POSTS_CREATE)
         ->middlewareFor(['edit', 'update'], 'can:'.AccessControl::PERMISSION_POSTS_UPDATE)
         ->middlewareFor('destroy', 'can:'.AccessControl::PERMISSION_POSTS_DELETE);
+
+    Route::get('pos', PosTerminalController::class)
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SALES_CREATE)
+        ->name('pos.terminal');
+
+    Route::post('pos/shifts', [PosShiftController::class, 'store'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SHIFTS_OPEN)
+        ->name('pos.shifts.store');
+
+    Route::get('pos/shifts', [PosShiftController::class, 'index'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SHIFTS_VIEW)
+        ->name('pos.shifts.index');
+
+    Route::patch('pos/shifts/{shift}/close', [PosShiftController::class, 'close'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SHIFTS_CLOSE)
+        ->name('pos.shifts.close');
+
+    Route::get('pos/products', [PosProductController::class, 'index'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_PRODUCTS_VIEW)
+        ->name('pos.products.index');
+
+    Route::post('pos/products', [PosProductController::class, 'store'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_PRODUCTS_MANAGE)
+        ->name('pos.products.store');
+
+    Route::post('pos/product-variants/{variant}/stock-adjustments', [PosProductController::class, 'adjustStock'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_INVENTORY_MANAGE)
+        ->name('pos.product-variants.stock-adjustments.store');
+
+    Route::get('pos/sales', [PosSaleController::class, 'index'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SALES_VIEW)
+        ->name('pos.sales.index');
+
+    Route::post('pos/sales', [PosSaleController::class, 'store'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SALES_CREATE)
+        ->name('pos.sales.store');
+
+    Route::get('pos/sales/{sale}', [PosSaleController::class, 'show'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SALES_VIEW)
+        ->name('pos.sales.show');
+
+    Route::get('pos/finance', PosFinanceController::class)
+        ->middleware('can:'.AccessControl::PERMISSION_POS_FINANCE_VIEW)
+        ->name('pos.finance.index');
 });
 
 Route::get('debug/avatar-storage', AvatarStorageController::class)

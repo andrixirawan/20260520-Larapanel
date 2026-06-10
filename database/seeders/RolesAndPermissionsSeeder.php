@@ -32,6 +32,13 @@ class RolesAndPermissionsSeeder extends Seeder
             ]);
         }
 
+        foreach (AccessControl::posPermissions() as $permission) {
+            Permission::firstOrCreate([
+                'name' => $permission,
+                'guard_name' => 'web',
+            ]);
+        }
+
         $superAdmin = Role::firstOrCreate([
             'name' => AccessControl::ROLE_SUPER_ADMIN,
             'guard_name' => 'web',
@@ -56,8 +63,9 @@ class RolesAndPermissionsSeeder extends Seeder
         $administrator->syncPermissions([
             ...AccessControl::userPermissions(),
             ...AccessControl::postPermissions(),
+            ...AccessControl::posPermissions(),
         ]);
-        $cashier->syncPermissions([]);
+        $cashier->syncPermissions(AccessControl::cashierPosPermissions());
         $subscriber->syncPermissions([AccessControl::PERMISSION_POSTS_VIEW]);
 
         User::doesntHave('roles')->each(
