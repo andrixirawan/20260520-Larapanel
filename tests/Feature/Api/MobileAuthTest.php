@@ -2,12 +2,18 @@
 
 use App\Models\MobileAuthToken;
 use App\Models\User;
+use App\Support\AccessControl;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+});
 
 test('mobile users can register and receive bearer token', function () {
     Notification::fake();
@@ -26,10 +32,18 @@ test('mobile users can register and receive bearer token', function () {
             'access_token',
             'token_type',
             'expires_at',
-            'user' => ['id', 'name', 'email', 'is_email_verified'],
+            'user' => ['id', 'name', 'email', 'is_email_verified', 'roles', 'permissions'],
         ])
         ->assertJsonPath('token_type', 'Bearer')
         ->assertJsonPath('user.email', 'mobile@example.com');
+
+    expect($response->json('user.roles'))->toBe([AccessControl::ROLE_SUBSCRIBER])
+        ->and($response->json('user.permissions'))->toMatchArray([
+            AccessControl::PERMISSION_POSTS_VIEW => true,
+            AccessControl::PERMISSION_POSTS_CREATE => false,
+            AccessControl::PERMISSION_POSTS_UPDATE => false,
+            AccessControl::PERMISSION_POSTS_DELETE => false,
+        ]);
 
     expect(MobileAuthToken::query()->count())->toBe(1);
 });

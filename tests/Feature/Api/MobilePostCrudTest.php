@@ -73,6 +73,7 @@ test('mobile users can create show update and delete posts', function () {
         ->postJson(route('api.mobile.posts.store'), [
             'title' => 'Mobile CRUD Post',
             'slug' => '',
+            'author' => 'Spoofed Author',
             'body' => 'Created from the mobile API.',
         ])
         ->assertCreated()
@@ -91,6 +92,7 @@ test('mobile users can create show update and delete posts', function () {
         ->patchJson(route('api.mobile.posts.update', $postId), [
             'title' => 'Updated Mobile Post',
             'slug' => 'updated-mobile-post',
+            'author' => 'Spoofed Update Author',
             'body' => 'Updated from the mobile API.',
         ])
         ->assertOk()
@@ -103,6 +105,37 @@ test('mobile users can create show update and delete posts', function () {
         ->assertJsonPath('message', 'Post deleted.');
 
     expect(Post::query()->whereKey($postId)->exists())->toBeFalse();
+});
+
+test('mobile post mutations require write permissions', function () {
+    $user = User::factory()->create();
+    $user->assignRole(AccessControl::ROLE_SUBSCRIBER);
+    $token = mobileTokenFor($user);
+    $post = Post::factory()->create();
+
+    $this->withToken($token)
+        ->getJson(route('api.mobile.posts.index'))
+        ->assertOk();
+
+    $this->withToken($token)
+        ->postJson(route('api.mobile.posts.store'), [
+            'title' => 'Unauthorized Post',
+            'slug' => '',
+            'body' => 'This should not be created.',
+        ])
+        ->assertForbidden();
+
+    $this->withToken($token)
+        ->patchJson(route('api.mobile.posts.update', $post), [
+            'title' => 'Unauthorized Update',
+            'slug' => $post->slug,
+            'body' => 'This should not be updated.',
+        ])
+        ->assertForbidden();
+
+    $this->withToken($token)
+        ->deleteJson(route('api.mobile.posts.destroy', $post))
+        ->assertForbidden();
 });
 
 test('mobile users can create a post with cover upload', function () {
