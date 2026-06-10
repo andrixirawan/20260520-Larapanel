@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Eye, ImageIcon, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,10 @@ export default function PostsIndex({
     filters: PostFilters;
     sortOptions: Record<string, string>;
 }) {
+    const { auth } = usePage().props;
+    const canCreatePost = auth.permissions['posts.create'];
+    const canUpdatePost = auth.permissions['posts.update'];
+    const canDeletePost = auth.permissions['posts.delete'];
     const hasFilters = Boolean(
         filters.search || filters.author || filters.sort !== 'latest',
     );
@@ -38,12 +42,14 @@ export default function PostsIndex({
                         description="Manage simple posts with optional cover images."
                     />
 
-                    <Button asChild className="w-fit">
-                        <Link href="/posts/create">
-                            <Plus />
-                            New post
-                        </Link>
-                    </Button>
+                    {canCreatePost && (
+                        <Button asChild className="w-fit">
+                            <Link href="/posts/create">
+                                <Plus />
+                                New post
+                            </Link>
+                        </Button>
+                    )}
                 </div>
 
                 <form
@@ -164,56 +170,60 @@ export default function PostsIndex({
                                                         </span>
                                                     </Link>
                                                 </Button>
-                                                <Button
-                                                    asChild
-                                                    size="icon-sm"
-                                                    variant="ghost"
-                                                >
-                                                    <Link
-                                                        href={`/posts/${post.id}/edit`}
+                                                {canUpdatePost && (
+                                                    <Button
+                                                        asChild
+                                                        size="icon-sm"
+                                                        variant="ghost"
                                                     >
-                                                        <Pencil />
-                                                        <span className="sr-only">
-                                                            Edit
-                                                        </span>
-                                                    </Link>
-                                                </Button>
-                                                <Form
-                                                    action={`/posts/${post.id}`}
-                                                    method="post"
-                                                    onSubmit={(event) => {
-                                                        if (
-                                                            !window.confirm(
-                                                                'Delete this post?',
-                                                            )
-                                                        ) {
-                                                            event.preventDefault();
-                                                        }
-                                                    }}
-                                                >
-                                                    {({ processing }) => (
-                                                        <>
-                                                            <input
-                                                                type="hidden"
-                                                                name="_method"
-                                                                value="delete"
-                                                            />
-                                                            <Button
-                                                                type="submit"
-                                                                size="icon-sm"
-                                                                variant="ghost"
-                                                                disabled={
-                                                                    processing
-                                                                }
-                                                            >
-                                                                <Trash2 />
-                                                                <span className="sr-only">
-                                                                    Delete
-                                                                </span>
-                                                            </Button>
-                                                        </>
-                                                    )}
-                                                </Form>
+                                                        <Link
+                                                            href={`/posts/${post.id}/edit`}
+                                                        >
+                                                            <Pencil />
+                                                            <span className="sr-only">
+                                                                Edit
+                                                            </span>
+                                                        </Link>
+                                                    </Button>
+                                                )}
+                                                {canDeletePost && (
+                                                    <Form
+                                                        action={`/posts/${post.id}`}
+                                                        method="post"
+                                                        onSubmit={(event) => {
+                                                            if (
+                                                                !window.confirm(
+                                                                    'Delete this post?',
+                                                                )
+                                                            ) {
+                                                                event.preventDefault();
+                                                            }
+                                                        }}
+                                                    >
+                                                        {({ processing }) => (
+                                                            <>
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="_method"
+                                                                    value="delete"
+                                                                />
+                                                                <Button
+                                                                    type="submit"
+                                                                    size="icon-sm"
+                                                                    variant="ghost"
+                                                                    disabled={
+                                                                        processing
+                                                                    }
+                                                                >
+                                                                    <Trash2 />
+                                                                    <span className="sr-only">
+                                                                        Delete
+                                                                    </span>
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                    </Form>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>

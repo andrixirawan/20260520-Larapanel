@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\AccessControl;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -40,6 +41,13 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+                'roles' => fn () => $request->user()?->getRoleNames()->values() ?? [],
+                'permissions' => fn () => [
+                    AccessControl::PERMISSION_POSTS_VIEW => $request->user()?->can(AccessControl::PERMISSION_POSTS_VIEW) ?? false,
+                    AccessControl::PERMISSION_POSTS_CREATE => $request->user()?->can(AccessControl::PERMISSION_POSTS_CREATE) ?? false,
+                    AccessControl::PERMISSION_POSTS_UPDATE => $request->user()?->can(AccessControl::PERMISSION_POSTS_UPDATE) ?? false,
+                    AccessControl::PERMISSION_POSTS_DELETE => $request->user()?->can(AccessControl::PERMISSION_POSTS_DELETE) ?? false,
+                ],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Pencil } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import type { Post } from './types';
 
 export default function PostsShow({ post }: { post: Post }) {
+    const { auth } = usePage().props;
+    const canUpdatePost = auth.permissions['posts.update'];
+
     return (
         <>
             <Head title={post.title} />
@@ -18,12 +21,14 @@ export default function PostsShow({ post }: { post: Post }) {
                         <Button asChild variant="outline">
                             <Link href="/posts">Back</Link>
                         </Button>
-                        <Button asChild>
-                            <Link href={`/posts/${post.id}/edit`}>
-                                <Pencil />
-                                Edit
-                            </Link>
-                        </Button>
+                        {canUpdatePost && (
+                            <Button asChild>
+                                <Link href={`/posts/${post.id}/edit`}>
+                                    <Pencil />
+                                    Edit
+                                </Link>
+                            </Button>
+                        )}
                     </div>
                 </div>
 

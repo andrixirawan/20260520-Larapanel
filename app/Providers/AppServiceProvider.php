@@ -4,12 +4,14 @@ namespace App\Providers;
 
 use App\Listeners\SendLoginNotification;
 use App\Listeners\SendLogoutNotification;
+use App\Support\AccessControl;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureAuthActivityNotifications();
+        $this->configureAuthorization();
         $this->configureDefaults();
     }
 
@@ -39,6 +42,14 @@ class AppServiceProvider extends ServiceProvider
     {
         Event::listen(Login::class, SendLoginNotification::class);
         Event::listen(Logout::class, SendLogoutNotification::class);
+    }
+
+    /**
+     * Let the super-admin role pass all Gate and can() authorization checks.
+     */
+    protected function configureAuthorization(): void
+    {
+        Gate::before(fn ($user, string $ability): ?bool => $user->hasRole(AccessControl::ROLE_SUPER_ADMIN) ? true : null);
     }
 
     /**

@@ -1,4 +1,5 @@
 import { Form, Head } from '@inertiajs/react';
+import { Chrome } from 'lucide-react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -9,7 +10,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { redirect as googleRedirect } from '@/routes/auth/google';
 import { store } from '@/routes/register';
-import { Chrome } from 'lucide-react';
 
 type Props = {
     passwordRules: string;

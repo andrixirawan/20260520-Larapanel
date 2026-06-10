@@ -1,4 +1,5 @@
 import { Form, Head } from '@inertiajs/react';
+import { Chrome } from 'lucide-react';
 import InputError from '@/components/input-error';
 import PasskeyVerify from '@/components/passkey-verify';
 import PasswordInput from '@/components/password-input';
@@ -12,7 +13,6 @@ import { register } from '@/routes';
 import { redirect as googleRedirect } from '@/routes/auth/google';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
-import { Chrome } from 'lucide-react';
 
 type Props = {
     status?: string;

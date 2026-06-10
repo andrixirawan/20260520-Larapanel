@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\GoogleOAuthController;
 use App\Http\Controllers\Debug\AvatarStorageController;
 use App\Http\Controllers\PostController;
+use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PostController::class, 'home'])->name('home');
@@ -22,7 +23,11 @@ Route::get('auth/google/redirect', [GoogleOAuthController::class, 'redirect'])
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 
-    Route::resource('posts', PostController::class);
+    Route::resource('posts', PostController::class)
+        ->middlewareFor(['index', 'show'], 'can:'.AccessControl::PERMISSION_POSTS_VIEW)
+        ->middlewareFor(['create', 'store'], 'can:'.AccessControl::PERMISSION_POSTS_CREATE)
+        ->middlewareFor(['edit', 'update'], 'can:'.AccessControl::PERMISSION_POSTS_UPDATE)
+        ->middlewareFor('destroy', 'can:'.AccessControl::PERMISSION_POSTS_DELETE);
 });
 
 Route::get('debug/avatar-storage', AvatarStorageController::class)

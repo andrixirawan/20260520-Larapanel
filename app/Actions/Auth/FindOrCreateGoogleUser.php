@@ -3,6 +3,7 @@
 namespace App\Actions\Auth;
 
 use App\Models\User;
+use App\Support\AccessControl;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -18,6 +19,8 @@ class FindOrCreateGoogleUser
         $user = User::where('google_id', $googleId)
             ->orWhere('email', $email)
             ->first();
+
+        $isNewUser = ! $user;
 
         if (! $user) {
             $user = new User([
@@ -37,6 +40,10 @@ class FindOrCreateGoogleUser
         }
 
         $user->save();
+
+        if ($isNewUser) {
+            $user->assignRole(AccessControl::ROLE_SUBSCRIBER);
+        }
 
         return $user;
     }
