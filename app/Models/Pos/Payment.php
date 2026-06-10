@@ -2,6 +2,7 @@
 
 namespace App\Models\Pos;
 
+use App\Models\Concerns\HasPublicId;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Payment extends Model
 {
+    use HasPublicId;
+
     public const METHOD_CASH = 'cash';
 
     public const METHOD_QRIS_DUMMY = 'qris_dummy';

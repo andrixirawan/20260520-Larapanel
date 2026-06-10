@@ -2,6 +2,7 @@
 
 namespace App\Models\Pos;
 
+use App\Models\Concerns\HasPublicId;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -30,6 +31,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Sale extends Model
 {
+    use HasPublicId;
+
     public const STATUS_COMPLETED = 'completed';
 
     public const STATUS_VOIDED = 'voided';

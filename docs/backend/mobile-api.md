@@ -29,6 +29,18 @@ Content-Type: application/json
 
 Token disimpan hashed di database (`mobile_auth_tokens.token_hash`) dan token asli hanya muncul sekali saat `login` atau `register`. Default expiry: 30 hari lewat `AUTH_MOBILE_TOKEN_EXPIRE_MINUTES`.
 
+## Identifier Policy
+
+Mobile app tidak menerima numeric database `id` untuk entity public-facing. Gunakan `public_id` dari response API sebagai identifier di state, cache, navigation params, deep link, dan request berikutnya.
+
+Aturan untuk mobile:
+
+- Jangan simpan atau mengirim numeric `id` untuk user/post jika response menyediakan `public_id`.
+- `public_id` berbentuk ULID string, contoh `01HZABCDEF123456789XYZABCD`.
+- Relasi database backend tetap memakai numeric `id`; client tidak perlu tahu nilai ini.
+- Untuk auth user, ganti penggunaan `user.id` menjadi `user.public_id`.
+- Untuk endpoint resource seperti posts, path parameter memakai `public_id`, contoh `/api/mobile/posts/01HZABCDEF123456789XYZABCD`.
+
 ## Route List
 
 | Method | Route | Auth | Kegunaan |
@@ -72,7 +84,7 @@ Response `201`:
   "access_token": "plain-text-token",
   "expires_at": "2026-07-06T13:00:00.000000Z",
   "user": {
-    "id": 1,
+    "public_id": "01HZABCDEF123456789XYZABCD",
     "name": "Jane Doe",
     "email": "jane@example.com",
     "avatar": null,
@@ -198,7 +210,7 @@ Response:
 ```json
 {
   "data": {
-    "id": 1,
+    "public_id": "01HZABCDEF123456789XYZABCD",
     "name": "Jane Doe",
     "email": "jane@example.com",
     "avatar": null,
@@ -305,7 +317,7 @@ const APP_SCHEME = process.env.EXPO_PUBLIC_APP_SCHEME ?? "larapanel";
 const TOKEN_KEY = "mobile_access_token";
 
 export type MobileUser = {
-  id: number;
+  public_id: string;
   name: string;
   email: string;
   avatar: string | null;

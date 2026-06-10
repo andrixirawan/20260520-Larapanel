@@ -79,7 +79,7 @@ test('cashier sale requires an open shift and records invoice stock finance and 
     $this->actingAs($cashier)
         ->post(route('pos.sales.store'), [
             'items' => [
-                ['product_variant_id' => $variant->id, 'quantity' => 2],
+                ['product_variant_public_id' => $variant->public_id, 'quantity' => 2],
             ],
             'payment_method' => Payment::METHOD_CASH,
             'received_amount' => 25000,
@@ -98,7 +98,7 @@ test('cashier sale requires an open shift and records invoice stock finance and 
     $this->actingAs($cashier)
         ->post(route('pos.sales.store'), [
             'items' => [
-                ['product_variant_id' => $variant->id, 'quantity' => 2],
+                ['product_variant_public_id' => $variant->public_id, 'quantity' => 2],
             ],
             'payment_method' => Payment::METHOD_CASH,
             'received_amount' => 25000,
@@ -146,7 +146,7 @@ test('cashier can close own shift with cash reconciliation', function () {
 
     $this->actingAs($cashier)->post(route('pos.sales.store'), [
         'items' => [
-            ['product_variant_id' => $variant->id, 'quantity' => 2],
+            ['product_variant_public_id' => $variant->public_id, 'quantity' => 2],
         ],
         'payment_method' => Payment::METHOD_CASH,
         'received_amount' => 20000,
@@ -181,7 +181,7 @@ test('dummy qris payment completes with provider reference for future gateway fl
     $this->actingAs($cashier)
         ->post(route('pos.sales.store'), [
             'items' => [
-                ['product_variant_id' => $variant->id, 'quantity' => 1],
+                ['product_variant_public_id' => $variant->public_id, 'quantity' => 1],
             ],
             'payment_method' => Payment::METHOD_QRIS_DUMMY,
         ])

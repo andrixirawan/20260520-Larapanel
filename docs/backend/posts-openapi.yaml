@@ -165,7 +165,8 @@ components:
       name: post
       required: true
       schema:
-        type: integer
+        type: string
+        description: Post public_id.
   responses:
     Unauthenticated:
       description: Missing or invalid bearer token
@@ -194,10 +195,10 @@ components:
   schemas:
     Post:
       type: object
-      required: [id, title, slug, cover, cover_url, body, author, created_at, updated_at]
+      required: [public_id, title, slug, cover, cover_url, body, author, created_at, updated_at]
       properties:
-        id:
-          type: integer
+        public_id:
+          type: string
         title:
           type: string
         slug:

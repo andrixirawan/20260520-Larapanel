@@ -98,7 +98,7 @@ function CartContent({
     isSubmitting: boolean;
     onPaymentMethodChange: (value: string) => void;
     onReceivedAmountChange: (value: string) => void;
-    onQuantityChange: (productId: number, delta: number) => void;
+    onQuantityChange: (productPublicId: string, delta: number) => void;
     onCheckout: () => void;
 }) {
     const canCheckout =
@@ -112,7 +112,7 @@ function CartContent({
                     {cart.length ? (
                         cart.map((item) => (
                             <div
-                                key={item.id}
+                                key={item.public_id}
                                 className="rounded-2xl border bg-card/70 p-4 shadow-xs"
                             >
                                 <div className="flex items-start justify-between gap-3">
@@ -141,7 +141,7 @@ function CartContent({
                                         size="icon-sm"
                                         variant="outline"
                                         onClick={() =>
-                                            onQuantityChange(item.id, -1)
+                                            onQuantityChange(item.public_id, -1)
                                         }
                                     >
                                         <Minus />
@@ -154,7 +154,7 @@ function CartContent({
                                         size="icon-sm"
                                         variant="outline"
                                         onClick={() =>
-                                            onQuantityChange(item.id, 1)
+                                            onQuantityChange(item.public_id, 1)
                                         }
                                     >
                                         <Plus />
@@ -343,7 +343,7 @@ export default function PosTerminal({
         const loadingToast = toast.loading('Closing shift...');
 
         router.patch(
-            `/pos/shifts/${openShift.id}/close`,
+            `/pos/shifts/${openShift.public_id}/close`,
             {
                 counted_cash: countedCash,
                 notes: closingNotes,
@@ -377,7 +377,7 @@ export default function PosTerminal({
             '/pos/sales',
             {
                 items: cart.map((item) => ({
-                    product_variant_id: item.product_variant_id,
+                    product_variant_public_id: item.product_variant_public_id,
                     quantity: item.quantity,
                 })),
                 payment_method: paymentMethod,
@@ -537,8 +537,8 @@ export default function PosTerminal({
                                     {recentSales.length ? (
                                         recentSales.map((sale) => (
                                             <Link
-                                                key={sale.id}
-                                                href={`/pos/sales/${sale.id}`}
+                                                key={sale.public_id}
+                                                href={`/pos/sales/${sale.public_id}`}
                                                 className="flex items-center justify-between rounded-xl border p-3 text-sm transition hover:bg-muted/40"
                                             >
                                                 <div>
@@ -655,7 +655,7 @@ export default function PosTerminal({
                                 <div className="space-y-3">
                                     <div className="flex flex-wrap gap-2">
                                         <Badge className="bg-white/14 text-white hover:bg-white/14">
-                                            Shift #{openShift.id}
+                                            Shift {openShift.public_id.slice(-8)}
                                         </Badge>
                                         <Badge className="bg-white/14 text-white hover:bg-white/14">
                                             Opened {formatPosDateTime(openShift.opened_at)}
@@ -795,7 +795,7 @@ export default function PosTerminal({
 
                                         return (
                                             <button
-                                                key={product.id}
+                                                key={product.public_id}
                                                 type="button"
                                                 onClick={() => addToCart(product)}
                                                 disabled={disabled}

@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('pos_products', function (Blueprint $table) {
             $table->id();
+            $table->ulid('public_id')->unique();
             $table->string('name');
             $table->string('sku')->nullable()->unique();
             $table->string('status', 24)->default('active')->index();
@@ -22,10 +23,13 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
+
+            $table->index(['status', 'created_at']);
         });
 
         Schema::create('pos_product_variants', function (Blueprint $table) {
             $table->id();
+            $table->ulid('public_id')->unique();
             $table->foreignId('product_id')->constrained('pos_products')->cascadeOnDelete();
             $table->string('name')->nullable();
             $table->string('sku')->nullable()->unique();
@@ -52,6 +56,7 @@ return new class extends Migration
 
         Schema::create('pos_shifts', function (Blueprint $table) {
             $table->id();
+            $table->ulid('public_id')->unique();
             $table->foreignId('cashier_id')->constrained('users')->restrictOnDelete();
             $table->foreignId('opened_by')->constrained('users')->restrictOnDelete();
             $table->foreignId('closed_by')->nullable()->constrained('users')->restrictOnDelete();
@@ -71,6 +76,7 @@ return new class extends Migration
 
         Schema::create('pos_sales', function (Blueprint $table) {
             $table->id();
+            $table->ulid('public_id')->unique();
             $table->foreignId('shift_id')->constrained('pos_shifts')->restrictOnDelete();
             $table->foreignId('cashier_id')->constrained('users')->restrictOnDelete();
             $table->string('invoice_number')->unique();
@@ -97,6 +103,7 @@ return new class extends Migration
 
         Schema::create('pos_sale_items', function (Blueprint $table) {
             $table->id();
+            $table->ulid('public_id')->unique();
             $table->foreignId('sale_id')->constrained('pos_sales')->cascadeOnDelete();
             $table->foreignId('product_id')->constrained('pos_products')->restrictOnDelete();
             $table->foreignId('product_variant_id')->constrained('pos_product_variants')->restrictOnDelete();
@@ -110,10 +117,13 @@ return new class extends Migration
             $table->decimal('cost_price_snapshot', 14, 2)->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
+
+            $table->index(['sale_id', 'product_variant_id']);
         });
 
         Schema::create('pos_payments', function (Blueprint $table) {
             $table->id();
+            $table->ulid('public_id')->unique();
             $table->foreignId('sale_id')->constrained('pos_sales')->cascadeOnDelete();
             $table->string('method', 32)->index();
             $table->string('status', 24)->default('paid')->index();
@@ -124,6 +134,8 @@ return new class extends Migration
             $table->string('provider_reference')->nullable()->index();
             $table->json('metadata')->nullable();
             $table->timestamps();
+
+            $table->index(['sale_id', 'status']);
         });
 
         Schema::create('pos_inventory_movements', function (Blueprint $table) {
@@ -142,6 +154,7 @@ return new class extends Migration
 
         Schema::create('pos_finance_entries', function (Blueprint $table) {
             $table->id();
+            $table->ulid('public_id')->unique();
             $table->date('entry_date')->index();
             $table->foreignId('shift_id')->nullable()->constrained('pos_shifts')->restrictOnDelete();
             $table->nullableMorphs('source');

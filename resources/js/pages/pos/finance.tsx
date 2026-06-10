@@ -11,9 +11,9 @@ import type { Paginated } from './types';
 import { formatPosDateTime, posCurrency } from './utils';
 
 type FinanceEntryRow = {
-    id: number;
+    public_id: string;
     entry_date: string | null;
-    shift_id: number | null;
+    shift_public_id: string | null;
     type: string;
     direction: string;
     payment_method: string | null;
@@ -67,7 +67,12 @@ export default function PosFinance({
                 enableSorting: false,
                 cell: ({ row }) => (
                     <>
-                        <div>Shift #{row.original.shift_id ?? '-'}</div>
+                        <div>
+                            Shift{' '}
+                            {row.original.shift_public_id
+                                ? row.original.shift_public_id.slice(-8)
+                                : '-'}
+                        </div>
                         <div className="text-xs text-muted-foreground">
                             By {row.original.created_by ?? '-'}
                         </div>

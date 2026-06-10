@@ -12,7 +12,7 @@ import type { Paginated } from './types';
 import { formatPosDateTime, posCurrency } from './utils';
 
 type ShiftRow = {
-    id: number;
+    public_id: string;
     cashier: string | null;
     opened_by: string | null;
     closed_by: string | null;
@@ -48,7 +48,9 @@ export default function PosShifts({
                 header: 'Shift',
                 cell: ({ row }) => (
                     <>
-                        <div className="font-medium">#{row.original.id}</div>
+                        <div className="font-medium">
+                            {row.original.public_id.slice(-8)}
+                        </div>
                         <Badge
                             variant={
                                 row.original.status === 'open'

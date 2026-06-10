@@ -64,14 +64,16 @@ export default function PostsIndex({
                 header: 'Author',
             },
             {
-                id: 'id',
-                accessorKey: 'id',
-                header: 'ID',
+                id: 'public_id',
+                accessorKey: 'public_id',
+                header: 'Public ID',
                 meta: {
-                    headerClassName: 'w-28',
+                    headerClassName: 'w-44',
                 },
                 cell: ({ row }) => (
-                    <Badge variant="outline">#{row.original.id}</Badge>
+                    <Badge variant="outline">
+                        {row.original.public_id.slice(-8)}
+                    </Badge>
                 ),
             },
             {
@@ -85,14 +87,16 @@ export default function PostsIndex({
                 cell: ({ row }) => (
                     <div className="flex justify-end gap-2">
                         <Button asChild size="icon-sm" variant="ghost">
-                            <Link href={`/posts/${row.original.id}`}>
+                            <Link href={`/posts/${row.original.public_id}`}>
                                 <Eye />
                                 <span className="sr-only">View</span>
                             </Link>
                         </Button>
                         {canUpdatePost && (
                             <Button asChild size="icon-sm" variant="ghost">
-                                <Link href={`/posts/${row.original.id}/edit`}>
+                                <Link
+                                    href={`/posts/${row.original.public_id}/edit`}
+                                >
                                     <Pencil />
                                     <span className="sr-only">Edit</span>
                                 </Link>
@@ -100,7 +104,7 @@ export default function PostsIndex({
                         )}
                         {canDeletePost && (
                             <Form
-                                action={`/posts/${row.original.id}`}
+                                action={`/posts/${row.original.public_id}`}
                                 method="post"
                                 onSubmit={(event) => {
                                     if (!window.confirm('Delete this post?')) {

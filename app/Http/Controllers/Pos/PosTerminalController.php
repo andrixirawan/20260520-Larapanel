@@ -27,10 +27,10 @@ class PosTerminalController extends Controller
                 $variant = $product->defaultVariant;
 
                 return [
-                    'id' => $product->id,
+                    'public_id' => $product->public_id,
                     'name' => $product->name,
                     'sku' => $variant?->sku ?? $product->sku,
-                    'product_variant_id' => $variant?->id,
+                    'product_variant_public_id' => $variant?->public_id,
                     'price' => (float) ($variant?->price ?? 0),
                     'track_inventory' => (bool) $variant?->track_inventory,
                     'stock' => (float) ($variant?->stock?->quantity_on_hand ?? 0),
@@ -51,7 +51,7 @@ class PosTerminalController extends Controller
             ->limit(5)
             ->get()
             ->map(fn (Sale $sale): array => [
-                'id' => $sale->id,
+                'public_id' => $sale->public_id,
                 'invoice_number' => $sale->invoice_number,
                 'total' => (float) $sale->total,
                 'payment_method' => $sale->payments->first()?->method,
@@ -61,7 +61,7 @@ class PosTerminalController extends Controller
         return Inertia::render('pos/terminal', [
             'products' => $products,
             'openShift' => $openShift ? [
-                'id' => $openShift->id,
+                'public_id' => $openShift->public_id,
                 'opening_cash' => (float) $openShift->opening_cash,
                 'opened_at' => $openShift->opened_at?->toISOString(),
             ] : null,

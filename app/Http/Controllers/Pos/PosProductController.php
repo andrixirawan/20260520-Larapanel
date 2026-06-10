@@ -52,11 +52,11 @@ class PosProductController extends Controller
                 $variant = $product->defaultVariant;
 
                 return [
-                    'id' => $product->id,
+                    'public_id' => $product->public_id,
                     'name' => $product->name,
                     'sku' => $variant?->sku ?? $product->sku,
                     'status' => $product->status,
-                    'product_variant_id' => $variant?->id,
+                    'product_variant_public_id' => $variant?->public_id,
                     'price' => (float) ($variant?->price ?? 0),
                     'cost_price' => $variant?->cost_price ? (float) $variant->cost_price : null,
                     'track_inventory' => (bool) $variant?->track_inventory,

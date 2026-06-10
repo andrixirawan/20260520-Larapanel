@@ -26,7 +26,7 @@ test('email can be verified', function () {
     $verificationUrl = URL::temporarySignedRoute(
         'verification.verify',
         now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1($user->email)],
+        ['id' => $user->public_id, 'hash' => sha1($user->email)],
     );
 
     $response = $this->actingAs($user)->get($verificationUrl);
@@ -45,7 +45,7 @@ test('email is not verified with invalid hash', function () {
     $verificationUrl = URL::temporarySignedRoute(
         'verification.verify',
         now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1('wrong-email')],
+        ['id' => $user->public_id, 'hash' => sha1('wrong-email')],
     );
 
     $this->actingAs($user)->get($verificationUrl);
@@ -54,7 +54,7 @@ test('email is not verified with invalid hash', function () {
     expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
 });
 
-test('email is not verified with invalid user id', function () {
+test('email is not verified with invalid user public id', function () {
     $user = User::factory()->unverified()->create();
 
     Event::fake();
@@ -62,7 +62,7 @@ test('email is not verified with invalid user id', function () {
     $verificationUrl = URL::temporarySignedRoute(
         'verification.verify',
         now()->addMinutes(60),
-        ['id' => 123, 'hash' => sha1($user->email)],
+        ['id' => '01HZINVALIDPUBLICID00000000', 'hash' => sha1($user->email)],
     );
 
     $this->actingAs($user)->get($verificationUrl);
@@ -90,7 +90,7 @@ test('already verified user visiting verification link is redirected without fir
     $verificationUrl = URL::temporarySignedRoute(
         'verification.verify',
         now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1($user->email)],
+        ['id' => $user->public_id, 'hash' => sha1($user->email)],
     );
 
     $this->actingAs($user)->get($verificationUrl)

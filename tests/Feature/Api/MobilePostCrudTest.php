@@ -55,7 +55,7 @@ test('mobile users can list and filter posts', function () {
         ->assertJsonPath('filters.search', 'Laravel')
         ->assertJsonStructure([
             'data' => [
-                '*' => ['id', 'title', 'slug', 'cover', 'cover_url', 'body', 'author', 'created_at', 'updated_at'],
+                '*' => ['public_id', 'title', 'slug', 'cover', 'cover_url', 'body', 'author', 'created_at', 'updated_at'],
             ],
             'links',
             'meta',
@@ -81,15 +81,15 @@ test('mobile users can create show update and delete posts', function () {
         ->assertJsonPath('data.slug', 'mobile-crud-post')
         ->assertJsonPath('data.author', 'Mobile Writer');
 
-    $postId = $create->json('data.id');
+    $postPublicId = $create->json('data.public_id');
 
     $this->withToken($token)
-        ->getJson(route('api.mobile.posts.show', $postId))
+        ->getJson(route('api.mobile.posts.show', $postPublicId))
         ->assertOk()
         ->assertJsonPath('data.title', 'Mobile CRUD Post');
 
     $this->withToken($token)
-        ->patchJson(route('api.mobile.posts.update', $postId), [
+        ->patchJson(route('api.mobile.posts.update', $postPublicId), [
             'title' => 'Updated Mobile Post',
             'slug' => 'updated-mobile-post',
             'author' => 'Spoofed Update Author',
@@ -100,11 +100,11 @@ test('mobile users can create show update and delete posts', function () {
         ->assertJsonPath('data.author', 'Mobile Writer');
 
     $this->withToken($token)
-        ->deleteJson(route('api.mobile.posts.destroy', $postId))
+        ->deleteJson(route('api.mobile.posts.destroy', $postPublicId))
         ->assertOk()
         ->assertJsonPath('message', 'Post deleted.');
 
-    expect(Post::query()->whereKey($postId)->exists())->toBeFalse();
+    expect(Post::query()->where('public_id', $postPublicId)->exists())->toBeFalse();
 });
 
 test('mobile post mutations require write permissions', function () {
@@ -154,7 +154,7 @@ test('mobile users can create a post with cover upload', function () {
         ->assertCreated()
         ->assertJsonPath('message', 'Post created.');
 
-    $post = Post::query()->findOrFail($response->json('data.id'));
+    $post = Post::query()->where('public_id', $response->json('data.public_id'))->firstOrFail();
 
     expect($post->cover)
         ->toStartWith('uploads/posts/covers/')

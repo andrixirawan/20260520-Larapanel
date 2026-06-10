@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicId;
 use Database\Factories\PostFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 class Post extends Model
 {
     /** @use HasFactory<PostFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicId;
 
     /**
      * @var array<int, string>

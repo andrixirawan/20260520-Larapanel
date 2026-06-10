@@ -30,7 +30,7 @@ class PostController extends Controller
     public function publicShow(Post $post): Response
     {
         return Inertia::render('public-posts/show', [
-            'post' => $post,
+            'post' => $this->postData($post),
         ]);
     }
 
@@ -68,14 +68,14 @@ class PostController extends Controller
     public function show(Post $post): Response
     {
         return Inertia::render('posts/show', [
-            'post' => $post,
+            'post' => $this->postData($post),
         ]);
     }
 
     public function edit(Post $post): Response
     {
         return Inertia::render('posts/edit', [
-            'post' => $post,
+            'post' => $this->postData($post),
         ]);
     }
 
@@ -166,6 +166,7 @@ class PostController extends Controller
             ->orderBy($sortColumns[$filters['sort']], $filters['direction'])
             ->orderByDesc('id')
             ->paginate($filters['per_page'])
+            ->through(fn (Post $post): array => $this->postData($post))
             ->withQueryString();
     }
 
@@ -195,6 +196,24 @@ class PostController extends Controller
             'title' => __('Title'),
             'author' => __('Author'),
             'created_at' => __('Created at'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function postData(Post $post): array
+    {
+        return [
+            'public_id' => $post->public_id,
+            'title' => $post->title,
+            'slug' => $post->slug,
+            'cover' => $post->cover,
+            'cover_url' => $post->cover ? route('posts.cover', $post, false) : null,
+            'body' => $post->body,
+            'author' => $post->author,
+            'created_at' => $post->created_at?->toISOString(),
+            'updated_at' => $post->updated_at?->toISOString(),
         ];
     }
 

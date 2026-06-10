@@ -4,9 +4,14 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Requests\Auth\VerifyEmailRequest;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -21,7 +26,7 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(\Laravel\Fortify\Http\Requests\VerifyEmailRequest::class, VerifyEmailRequest::class);
     }
 
     /**
@@ -30,6 +35,7 @@ class FortifyServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureActions();
+        $this->configureEmailVerification();
         $this->configureViews();
         $this->configureRateLimiting();
     }
@@ -41,6 +47,21 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+    }
+
+    /**
+     * Use public IDs in user-facing email verification URLs.
+     */
+    private function configureEmailVerification(): void
+    {
+        VerifyEmail::createUrlUsing(fn ($notifiable): string => URL::temporarySignedRoute(
+            'verification.verify',
+            Carbon::now()->addMinutes(Config::get('auth.verification.expire', 60)),
+            [
+                'id' => $notifiable->public_id,
+                'hash' => sha1($notifiable->getEmailForVerification()),
+            ],
+        ));
     }
 
     /**

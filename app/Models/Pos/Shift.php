@@ -2,6 +2,7 @@
 
 namespace App\Models\Pos;
 
+use App\Models\Concerns\HasPublicId;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Shift extends Model
 {
+    use HasPublicId;
+
     public const STATUS_OPEN = 'open';
 
     public const STATUS_CLOSED = 'closed';

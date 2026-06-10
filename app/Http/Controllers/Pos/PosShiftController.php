@@ -42,7 +42,8 @@ class PosShiftController extends Controller
                         ->where('status', 'like', "%{$search}%")
                         ->orWhereHas('cashier', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"))
                         ->orWhereHas('openedBy', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"))
-                        ->orWhereHas('closedBy', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"));
+                        ->orWhereHas('closedBy', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"))
+                        ->orWhere('public_id', 'like', "%{$search}%");
 
                     if (is_numeric($search)) {
                         $builder->orWhere('id', (int) $search);
@@ -54,7 +55,7 @@ class PosShiftController extends Controller
             ->paginate($perPage)
             ->withQueryString()
             ->through(fn (Shift $shift): array => [
-                'id' => $shift->id,
+                'public_id' => $shift->public_id,
                 'cashier' => $shift->cashier?->name,
                 'opened_by' => $shift->openedBy?->name,
                 'closed_by' => $shift->closedBy?->name,

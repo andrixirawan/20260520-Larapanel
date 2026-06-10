@@ -1,7 +1,7 @@
 import type { Paginated } from '@/types/pagination';
 
 export type Post = {
-    id: number;
+    public_id: string;
     title: string;
     slug: string;
     cover: string | null;

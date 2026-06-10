@@ -2,6 +2,7 @@
 
 namespace App\Models\Pos;
 
+use App\Models\Concerns\HasPublicId;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['name', 'sku', 'status', 'description', 'metadata', 'created_by', 'updated_by'])]
 class Product extends Model
 {
-    use SoftDeletes;
+    use HasPublicId, SoftDeletes;
 
     public const STATUS_ACTIVE = 'active';
 

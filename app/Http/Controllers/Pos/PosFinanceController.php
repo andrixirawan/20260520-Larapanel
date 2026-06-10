@@ -27,7 +27,7 @@ class PosFinanceController extends Controller
         $perPage = TableQuery::perPage($request, 15);
 
         $entries = FinanceEntry::query()
-            ->with(['shift:id,cashier_id,opened_at', 'creator:id,name'])
+            ->with(['shift:id,public_id,cashier_id,opened_at', 'creator:id,name'])
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($builder) use ($search): void {
                     $builder
@@ -35,7 +35,9 @@ class PosFinanceController extends Controller
                         ->orWhere('direction', 'like', "%{$search}%")
                         ->orWhere('payment_method', 'like', "%{$search}%")
                         ->orWhere('notes', 'like', "%{$search}%")
-                        ->orWhereHas('creator', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"));
+                        ->orWhere('public_id', 'like', "%{$search}%")
+                        ->orWhereHas('creator', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('shift', fn ($shiftQuery) => $shiftQuery->where('public_id', 'like', "%{$search}%"));
 
                     if (is_numeric($search)) {
                         $builder->orWhere('shift_id', (int) $search);
@@ -47,9 +49,9 @@ class PosFinanceController extends Controller
             ->paginate($perPage)
             ->withQueryString()
             ->through(fn (FinanceEntry $entry): array => [
-                'id' => $entry->id,
+                'public_id' => $entry->public_id,
                 'entry_date' => $entry->entry_date?->toDateString(),
-                'shift_id' => $entry->shift_id,
+                'shift_public_id' => $entry->shift?->public_id,
                 'type' => $entry->type,
                 'direction' => $entry->direction,
                 'payment_method' => $entry->payment_method,

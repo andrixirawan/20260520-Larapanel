@@ -2,6 +2,7 @@
 
 namespace App\Models\Pos;
 
+use App\Models\Concerns\HasPublicId;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class SaleItem extends Model
 {
+    use HasPublicId;
+
     protected $table = 'pos_sale_items';
 
     protected function casts(): array

@@ -20,9 +20,18 @@ Authorization: Bearer <mobile_access_token>
 | --- | --- | --- | --- |
 | GET | `/posts` | `posts.view` | List posts, pagination, search, filter, sort. |
 | POST | `/posts` | `posts.create` | Create post. |
-| GET | `/posts/{id}` | `posts.view` | Detail post. |
-| PATCH | `/posts/{id}` | `posts.update` | Update post. |
-| DELETE | `/posts/{id}` | `posts.delete` | Delete post. |
+| GET | `/posts/{public_id}` | `posts.view` | Detail post. |
+| PATCH | `/posts/{public_id}` | `posts.update` | Update post. |
+| DELETE | `/posts/{public_id}` | `posts.delete` | Delete post. |
+
+## Identifier Rules
+
+Posts API tidak mengekspos numeric database `id`. Mobile app harus memakai `public_id`:
+
+- Simpan `public_id` dari response list/detail/create.
+- Pakai `public_id` untuk route detail, update, dan delete.
+- Jangan memakai numeric `id` di navigation params, cache key, atau request API.
+- `cover_url` juga memakai `public_id` di URL backend.
 
 ## List Posts
 
@@ -46,11 +55,11 @@ Response:
 {
   "data": [
     {
-      "id": 1,
+      "public_id": "01HZPOSTPUBLICID1234567890",
       "title": "Laravel API Guide",
       "slug": "laravel-api-guide",
       "cover": "uploads/posts/covers/hashed-cover.jpg",
-      "cover_url": "https://demo.shendro.cloud/posts/1/cover",
+      "cover_url": "https://demo.shendro.cloud/posts/01HZPOSTPUBLICID1234567890/cover",
       "body": "Post content",
       "author": "Rani",
       "created_at": "2026-06-08T08:00:00.000000Z",
@@ -102,7 +111,7 @@ Response `201`:
 {
   "message": "Post created.",
   "data": {
-    "id": 1,
+    "public_id": "01HZPOSTPUBLICID1234567890",
     "title": "Mobile CRUD Post",
     "slug": "mobile-crud-post",
     "cover": null,
@@ -118,7 +127,7 @@ Response `201`:
 ## Update Post
 
 ```http
-PATCH /api/mobile/posts/1
+PATCH /api/mobile/posts/01HZPOSTPUBLICID1234567890
 ```
 
 JSON body:
@@ -131,7 +140,7 @@ JSON body:
 }
 ```
 
-Untuk update cover image dari mobile, kirim multipart sebagai `POST /api/mobile/posts/1` dengan field `_method=PATCH`, karena file upload multipart perlu diproses sebagai POST di PHP:
+Untuk update cover image dari mobile, kirim multipart sebagai `POST /api/mobile/posts/01HZPOSTPUBLICID1234567890` dengan field `_method=PATCH`, karena file upload multipart perlu diproses sebagai POST di PHP:
 
 | Field | Required | Notes |
 | --- | --- | --- |
@@ -144,7 +153,7 @@ Untuk update cover image dari mobile, kirim multipart sebagai `POST /api/mobile/
 ## Delete Post
 
 ```http
-DELETE /api/mobile/posts/1
+DELETE /api/mobile/posts/01HZPOSTPUBLICID1234567890
 ```
 
 Response:

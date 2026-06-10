@@ -156,7 +156,8 @@ export default function PosProducts({
                     cellClassName: 'text-right',
                 },
                 cell: ({ row }) =>
-                    canManageInventory && row.original.product_variant_id ? (
+                    canManageInventory &&
+                    row.original.product_variant_public_id ? (
                         <Button
                             size="sm"
                             variant="outline"
@@ -215,14 +216,14 @@ export default function PosProducts({
     };
 
     const adjustStock = () => {
-        if (!selectedProduct?.product_variant_id) {
+        if (!selectedProduct?.product_variant_public_id) {
             return;
         }
 
         const loadingToast = toast.loading('Applying stock adjustment...');
 
         router.post(
-            `/pos/product-variants/${selectedProduct.product_variant_id}/stock-adjustments`,
+            `/pos/product-variants/${selectedProduct.product_variant_public_id}/stock-adjustments`,
             adjustment,
             {
                 preserveScroll: true,

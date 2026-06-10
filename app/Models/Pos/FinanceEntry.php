@@ -2,6 +2,7 @@
 
 namespace App\Models\Pos;
 
+use App\Models\Concerns\HasPublicId;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 ])]
 class FinanceEntry extends Model
 {
+    use HasPublicId;
+
     public const TYPE_SALE_INCOME = 'sale_income';
 
     public const DIRECTION_CREDIT = 'credit';

@@ -76,7 +76,7 @@ test('avatar picture can be uploaded', function () {
 
     expect($user->getRawOriginal('avatar'))
         ->toStartWith("uploads/users/{$user->id}/avatars/")
-        ->and($user->avatar)->toStartWith("/users/{$user->id}/avatar?v=");
+        ->and($user->avatar)->toStartWith("/users/{$user->public_id}/avatar?v=");
 
     Storage::disk('public')->assertExists($user->getRawOriginal('avatar'));
 });
@@ -115,7 +115,7 @@ test('uploaded avatar url uses the laravel avatar response route', function () {
     ]);
 
     expect($user->avatar)
-        ->toStartWith("/users/{$user->id}/avatar")
+        ->toStartWith("/users/{$user->public_id}/avatar")
         ->toContain('?v=');
 });
 

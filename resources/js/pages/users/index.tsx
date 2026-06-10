@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import type { Paginated, TableFilters } from '@/types/pagination';
 
 type ManagedUser = {
-    id: number;
+    public_id: string;
     name: string;
     email: string;
     email_verified_at: string | null;
@@ -28,7 +28,7 @@ function UserUpdateForm({ user, roles }: { user: ManagedUser; roles: string[] })
         <form
             onSubmit={(event) => {
                 event.preventDefault();
-                form.patch(`/users/${user.id}`, {
+                form.patch(`/users/${user.public_id}`, {
                     preserveScroll: true,
                 });
             }}
@@ -107,7 +107,7 @@ export default function UsersIndex({
                     <>
                         <div className="font-medium">{row.original.name}</div>
                         <div className="text-sm text-muted-foreground">
-                            #{row.original.id}
+                            {row.original.public_id.slice(-8)}
                         </div>
                     </>
                 ),

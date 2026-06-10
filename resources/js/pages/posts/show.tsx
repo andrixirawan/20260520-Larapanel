@@ -23,7 +23,7 @@ export default function PostsShow({ post }: { post: Post }) {
                         </Button>
                         {canUpdatePost && (
                             <Button asChild>
-                                <Link href={`/posts/${post.id}/edit`}>
+                                <Link href={`/posts/${post.public_id}/edit`}>
                                     <Pencil />
                                     Edit
                                 </Link>
@@ -33,7 +33,9 @@ export default function PostsShow({ post }: { post: Post }) {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline">ID #{post.id}</Badge>
+                    <Badge variant="outline">
+                        {post.public_id.slice(-8)}
+                    </Badge>
                     <Badge variant="secondary">{post.author}</Badge>
                 </div>
 

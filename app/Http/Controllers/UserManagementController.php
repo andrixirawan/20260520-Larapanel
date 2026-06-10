@@ -44,7 +44,7 @@ class UserManagementController extends Controller
             ->paginate($perPage)
             ->withQueryString()
             ->through(fn (User $user): array => [
-                'id' => $user->id,
+                'public_id' => $user->public_id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'email_verified_at' => $user->email_verified_at?->toISOString(),

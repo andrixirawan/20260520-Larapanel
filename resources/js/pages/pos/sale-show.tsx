@@ -15,31 +15,32 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatPosDateTime, posCurrency } from './utils';
 
 type SaleDetail = {
-    id: number;
+    public_id: string;
     invoice_number: string;
     status: string;
     payment_status: string;
-    subtotal: string;
-    total: string;
-    paid_total: string;
-    change_total: string;
+    subtotal: number;
+    total: number;
+    paid_total: number;
+    change_total: number;
     created_at: string;
-    cashier?: { id: number; name: string };
+    cashier?: { name: string };
+    shift?: { public_id: string; opened_at: string | null };
     items: Array<{
-        id: number;
+        public_id: string;
         name_snapshot: string;
         sku_snapshot: string | null;
-        quantity: string;
-        unit_price: string;
-        line_total: string;
+        quantity: number;
+        unit_price: number;
+        line_total: number;
     }>;
     payments: Array<{
-        id: number;
+        public_id: string;
         method: string;
         status: string;
-        amount: string;
-        received_amount: string | null;
-        change_amount: string;
+        amount: number;
+        received_amount: number | null;
+        change_amount: number;
         provider_reference: string | null;
     }>;
 };
@@ -195,7 +196,7 @@ export default function PosSaleShow({ sale }: { sale: SaleDetail }) {
                             <CardContent className="space-y-3">
                                 {sale.payments.map((payment) => (
                                     <div
-                                        key={payment.id}
+                                        key={payment.public_id}
                                         className="rounded-2xl border bg-muted/30 p-4 text-sm"
                                     >
                                         <div className="flex items-start justify-between gap-3">

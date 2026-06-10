@@ -146,7 +146,7 @@ export default function Welcome({
                         {posts.data.length ? (
                             posts.data.map((post) => (
                                 <article
-                                    key={post.id}
+                                    key={post.public_id}
                                     className="grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-[180px_minmax(0,1fr)]"
                                 >
                                     {post.cover_url ? (

@@ -32,7 +32,7 @@ test('mobile users can register and receive bearer token', function () {
             'access_token',
             'token_type',
             'expires_at',
-            'user' => ['id', 'name', 'email', 'is_email_verified', 'roles', 'permissions'],
+            'user' => ['public_id', 'name', 'email', 'is_email_verified', 'roles', 'permissions'],
         ])
         ->assertJsonPath('token_type', 'Bearer')
         ->assertJsonPath('user.email', 'mobile@example.com');

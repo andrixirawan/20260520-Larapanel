@@ -31,7 +31,7 @@ export default function PosSales({
                 cell: ({ row }) => (
                     <>
                         <Link
-                            href={`/pos/sales/${row.original.id}`}
+                            href={`/pos/sales/${row.original.public_id}`}
                             className="font-medium hover:underline"
                         >
                             {row.original.invoice_number}

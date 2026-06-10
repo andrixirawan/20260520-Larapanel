@@ -18,7 +18,7 @@ type PosTerminalStore = {
     setCheckoutOpen: (value: boolean) => void;
     setCloseShiftOpen: (value: boolean) => void;
     addToCart: (product: PosProduct) => void;
-    updateQuantity: (productId: number, delta: number) => void;
+    updateQuantity: (productPublicId: string, delta: number) => void;
     clearCart: () => void;
     resetPayment: () => void;
 };
@@ -37,16 +37,18 @@ export const usePosTerminalStore = create<PosTerminalStore>((set) => ({
     setCloseShiftOpen: (value) => set({ closeShiftOpen: value }),
     addToCart: (product) =>
         set((state) => {
-            if (!product.product_variant_id) {
+            if (!product.product_variant_public_id) {
                 return state;
             }
 
-            const existing = state.cart.find((item) => item.id === product.id);
+            const existing = state.cart.find(
+                (item) => item.public_id === product.public_id,
+            );
 
             if (existing) {
                 return {
                     cart: state.cart.map((item) =>
-                        item.id === product.id
+                        item.public_id === product.public_id
                             ? { ...item, quantity: item.quantity + 1 }
                             : item,
                     ),
@@ -57,11 +59,11 @@ export const usePosTerminalStore = create<PosTerminalStore>((set) => ({
                 cart: [...state.cart, { ...product, quantity: 1 }],
             };
         }),
-    updateQuantity: (productId, delta) =>
+    updateQuantity: (productPublicId, delta) =>
         set((state) => ({
             cart: state.cart
                 .map((item) =>
-                    item.id === productId
+                    item.public_id === productPublicId
                         ? { ...item, quantity: item.quantity + delta }
                         : item,
                 )

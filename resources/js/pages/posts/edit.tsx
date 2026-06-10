@@ -35,7 +35,7 @@ export default function PostsEdit({ post }: { post: Post }) {
                 />
 
                 <Form
-                    action={`/posts/${post.id}`}
+                    action={`/posts/${post.public_id}`}
                     method="post"
                     encType="multipart/form-data"
                     className="grid max-w-3xl gap-6"

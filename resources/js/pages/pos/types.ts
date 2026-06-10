@@ -3,10 +3,10 @@ import type { Paginated } from '@/types/pagination';
 export type { Paginated };
 
 export type PosProduct = {
-    id: number;
+    public_id: string;
     name: string;
     sku: string | null;
-    product_variant_id: number | null;
+    product_variant_public_id: string | null;
     price: number;
     track_inventory: boolean;
     stock: number;
@@ -20,13 +20,13 @@ export type PosProductRow = PosProduct & {
 };
 
 export type PosShift = {
-    id: number;
+    public_id: string;
     opening_cash: number;
     opened_at: string | null;
 };
 
 export type PosSaleListItem = {
-    id: number;
+    public_id: string;
     invoice_number: string;
     cashier: string | null;
     status: string;
@@ -37,7 +37,7 @@ export type PosSaleListItem = {
 };
 
 export type RecentSale = {
-    id: number;
+    public_id: string;
     invoice_number: string;
     total: number;
     payment_method: string | null;

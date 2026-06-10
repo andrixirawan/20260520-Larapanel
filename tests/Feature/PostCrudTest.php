@@ -51,7 +51,7 @@ test('post can be created with a cover image', function () {
         ->toBe('my-first-post')
         ->and($post->author)->toBe('Current Admin')
         ->and($post->cover)->toStartWith('uploads/posts/covers/')
-        ->and($post->cover_url)->toBe("/posts/{$post->id}/cover")
+        ->and($post->cover_url)->toBe("/posts/{$post->public_id}/cover")
         ->and(basename($post->cover))->not->toBe('plain-cover.jpg');
 
     Storage::disk('public')->assertExists($post->cover);
@@ -105,7 +105,7 @@ test('posts can be opened from a public slug url', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('public-posts/show')
-            ->where('post.id', $post->id)
+            ->where('post.public_id', $post->public_id)
         );
 });
 
