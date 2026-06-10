@@ -51,6 +51,7 @@ class PostController extends Controller
     {
         $validated = Arr::except($this->validatedPost($request), 'remove_cover');
         $validated['slug'] = $this->uniqueSlug($validated['slug'] ?: $validated['title']);
+        $validated['author'] = $request->user()->name;
 
         if ($request->hasFile('cover')) {
             $validated['cover'] = $this->storeCover($request);
@@ -133,7 +134,6 @@ class PostController extends Controller
                 'max:'.config('uploads.posts.max_size', 2048),
             ],
             'body' => ['required', 'string'],
-            'author' => ['required', 'string', 'max:255'],
             'remove_cover' => ['nullable', 'boolean'],
         ]);
     }

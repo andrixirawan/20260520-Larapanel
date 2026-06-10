@@ -65,17 +65,6 @@ export default function PostsEdit({ post }: { post: Post }) {
                                 <InputError message={errors.slug} />
                             </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="author">Author</Label>
-                                <Input
-                                    id="author"
-                                    name="author"
-                                    required
-                                    defaultValue={post.author}
-                                />
-                                <InputError message={errors.author} />
-                            </div>
-
                             <div className="grid gap-3">
                                 <Label htmlFor="cover">Cover image</Label>
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">

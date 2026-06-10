@@ -3,11 +3,17 @@
 use App\Actions\Mobile\CreateMobileAuthToken;
 use App\Models\Post;
 use App\Models\User;
+use App\Support\AccessControl;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+});
 
 function mobileTokenFor(User $user): string
 {
@@ -25,7 +31,9 @@ test('mobile posts require authentication', function () {
 });
 
 test('mobile users can list and filter posts', function () {
-    $token = mobileTokenFor(User::factory()->create());
+    $user = User::factory()->create();
+    $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $token = mobileTokenFor($user);
 
     Post::factory()->create([
         'title' => 'Laravel API Guide',
@@ -57,18 +65,20 @@ test('mobile users can list and filter posts', function () {
 });
 
 test('mobile users can create show update and delete posts', function () {
-    $token = mobileTokenFor(User::factory()->create());
+    $user = User::factory()->create(['name' => 'Mobile Writer']);
+    $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $token = mobileTokenFor($user);
 
     $create = $this->withToken($token)
         ->postJson(route('api.mobile.posts.store'), [
             'title' => 'Mobile CRUD Post',
             'slug' => '',
             'body' => 'Created from the mobile API.',
-            'author' => 'Mobile User',
         ])
         ->assertCreated()
         ->assertJsonPath('message', 'Post created.')
-        ->assertJsonPath('data.slug', 'mobile-crud-post');
+        ->assertJsonPath('data.slug', 'mobile-crud-post')
+        ->assertJsonPath('data.author', 'Mobile Writer');
 
     $postId = $create->json('data.id');
 
@@ -82,11 +92,10 @@ test('mobile users can create show update and delete posts', function () {
             'title' => 'Updated Mobile Post',
             'slug' => 'updated-mobile-post',
             'body' => 'Updated from the mobile API.',
-            'author' => 'Editor',
         ])
         ->assertOk()
         ->assertJsonPath('message', 'Post updated.')
-        ->assertJsonPath('data.author', 'Editor');
+        ->assertJsonPath('data.author', 'Mobile Writer');
 
     $this->withToken($token)
         ->deleteJson(route('api.mobile.posts.destroy', $postId))
@@ -98,14 +107,15 @@ test('mobile users can create show update and delete posts', function () {
 
 test('mobile users can create a post with cover upload', function () {
     Storage::fake('public');
-    $token = mobileTokenFor(User::factory()->create());
+    $user = User::factory()->create(['name' => 'Mobile Writer']);
+    $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $token = mobileTokenFor($user);
 
     $response = $this->withToken($token)
         ->post(route('api.mobile.posts.store'), [
             'title' => 'Mobile Cover Post',
             'slug' => '',
             'body' => 'Created with a cover from mobile.',
-            'author' => 'Mobile User',
             'cover' => UploadedFile::fake()->image('plain-cover.jpg'),
         ])
         ->assertCreated()
@@ -115,6 +125,7 @@ test('mobile users can create a post with cover upload', function () {
 
     expect($post->cover)
         ->toStartWith('uploads/posts/covers/')
+        ->and($post->author)->toBe('Mobile Writer')
         ->and($response->json('data.cover'))->toBe($post->cover)
         ->and($response->json('data.cover_url'))->toBe(route('posts.cover', $post));
 
@@ -123,7 +134,9 @@ test('mobile users can create a post with cover upload', function () {
 
 test('mobile users can replace and remove a cover image', function () {
     Storage::fake('public');
-    $token = mobileTokenFor(User::factory()->create());
+    $user = User::factory()->create();
+    $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $token = mobileTokenFor($user);
     $oldCover = 'uploads/posts/covers/old-cover.jpg';
     Storage::disk('public')->put($oldCover, 'old cover');
     $post = Post::factory()->create(['cover' => $oldCover]);
@@ -134,12 +147,12 @@ test('mobile users can replace and remove a cover image', function () {
             'title' => 'Updated Cover Post',
             'slug' => 'updated-cover-post',
             'body' => 'Updated with a new cover from mobile.',
-            'author' => 'Mobile Editor',
             'cover' => UploadedFile::fake()->image('new-cover.png'),
         ])
         ->assertOk()
         ->assertJsonPath('message', 'Post updated.')
-        ->assertJsonPath('data.cover_url', route('posts.cover', $post));
+        ->assertJsonPath('data.cover_url', route('posts.cover', $post))
+        ->assertJsonPath('data.author', $post->author);
 
     $newCover = $post->refresh()->cover;
 
@@ -152,7 +165,6 @@ test('mobile users can replace and remove a cover image', function () {
             'title' => 'Updated Cover Post',
             'slug' => 'updated-cover-post',
             'body' => 'Updated without cover.',
-            'author' => 'Mobile Editor',
             'remove_cover' => true,
         ])
         ->assertOk()
