@@ -1,0 +1,286 @@
+openapi: 3.0.3
+info:
+  title: Larapanel Mobile Posts API
+  version: 1.0.0
+servers:
+  - url: https://demo.shendro.cloud/api/mobile
+    description: Production
+  - url: http://10.0.2.2:8000/api/mobile
+    description: Android emulator local
+security:
+  - bearerAuth: []
+paths:
+  /posts:
+    get:
+      summary: List posts
+      tags: [Posts]
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: author
+          schema:
+            type: string
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [latest, oldest, title, author]
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            enum: [5, 10, 15, 25]
+        - in: query
+          name: page
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Paginated posts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostCollectionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create post
+      tags: [Posts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostInput"
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/PostInput"
+                - type: object
+                  properties:
+                    cover:
+                      type: string
+                      format: binary
+      responses:
+        "201":
+          description: Post created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostMutationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /posts/{post}:
+    get:
+      summary: Show post
+      tags: [Posts]
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      responses:
+        "200":
+          description: Post detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update post
+      tags: [Posts]
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostInput"
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/PostInput"
+                - type: object
+                  properties:
+                    cover:
+                      type: string
+                      format: binary
+                    remove_cover:
+                      type: boolean
+      responses:
+        "200":
+          description: Post updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostMutationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      summary: Delete post
+      tags: [Posts]
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      responses:
+        "200":
+          description: Post deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: mobile token
+  parameters:
+    PostId:
+      in: path
+      name: post
+      required: true
+      schema:
+        type: integer
+  responses:
+    Unauthenticated:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MessageResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MessageResponse"
+    Forbidden:
+      description: Authenticated user does not have the required permission
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MessageResponse"
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationError"
+  schemas:
+    Post:
+      type: object
+      required: [id, title, slug, cover, cover_url, body, author, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        cover:
+          type: string
+          nullable: true
+        cover_url:
+          type: string
+          nullable: true
+        body:
+          type: string
+        author:
+          type: string
+        created_at:
+          type: string
+          nullable: true
+        updated_at:
+          type: string
+          nullable: true
+    PostInput:
+      type: object
+      required: [title, body]
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: Optional. Generated from title when empty.
+        body:
+          type: string
+    PostResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Post"
+    PostMutationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/Post"
+    PostCollectionResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Post"
+        links:
+          type: object
+        meta:
+          type: object
+        filters:
+          type: object
+          properties:
+            search:
+              type: string
+            author:
+              type: string
+            sort:
+              type: string
+            per_page:
+              type: integer
+        sort_options:
+          type: object
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
