@@ -30,22 +30,38 @@ Permission MVP:
 
 ## Scope MVP
 
+Legend status:
+
+- `[x]` selesai dan sudah ada implementasi utama di repo.
+- `[~]` parsial, fondasi/data sudah ada tetapi flow/UI/aturan operasional belum lengkap.
+- `[ ]` belum dikerjakan.
+
 ### Tahap 1 - Core POS Web
 
 Tujuan: kasir bisa membuka shift, menjual produk, menerima cash/dummy non-cash, sistem membuat invoice, stok berkurang, finance entry tercatat, dan administrator bisa menyiapkan produk/stok.
 
 Deliverable:
 
-- Master produk sederhana dengan default variant.
-- Inventory stock dan movement ledger, bukan update stok tanpa jejak.
-- Shift opening dan closing dengan deklarasi cash awal/akhir.
-- POS terminal web responsive untuk cashier/administrator.
-- Invoice number unik.
-- Sale item snapshot untuk menjaga histori walaupun produk berubah.
-- Payment method `cash` aktif, dan dummy `qris_dummy`, `card_dummy`, `bank_transfer_dummy`, `ewallet_dummy`.
-- Finance entry otomatis dari pembayaran.
-- Audit log untuk event penting: product created, stock adjusted, shift opened/closed, sale created.
-- Permission dan menu sesuai role.
+- [x] Master produk sederhana dengan default variant.
+  Progres: CRUD dasar produk POS dan default variant sudah ada, termasuk list/search dan create dari web.
+- [x] Inventory stock dan movement ledger, bukan update stok tanpa jejak.
+  Progres: `pos_inventory_stocks` dan `pos_inventory_movements` sudah dipakai untuk opening stock, adjustment, dan pengurangan stok saat sale.
+- [x] Shift opening dan closing dengan deklarasi cash awal/akhir.
+  Progres: open/close shift, expected cash, counted cash, dan cash difference sudah berjalan.
+- [x] POS terminal web responsive untuk cashier/administrator.
+  Progres: halaman `/pos` aktif, mobile memakai cart sheet, desktop memakai cart sidebar, dan halaman baru dipadatkan agar POS jadi fokus utama.
+- [x] Invoice number unik.
+  Progres: invoice number unik sudah dipakai pada sale dan disimpan immutable di transaksi.
+- [x] Sale item snapshot untuk menjaga histori walaupun produk berubah.
+  Progres: `sku_snapshot`, `name_snapshot`, `unit_price`, dan `cost_price_snapshot` sudah disimpan saat sale dibuat.
+- [x] Payment method `cash` aktif, dan dummy `qris_dummy`, `card_dummy`, `bank_transfer_dummy`, `ewallet_dummy`.
+  Progres: pilihan payment method sudah tersedia dan flow checkout menerima cash maupun dummy non-cash.
+- [x] Finance entry otomatis dari pembayaran.
+  Progres: sale membuat payment dan finance entry dalam transaction yang sama.
+- [x] Audit log untuk event penting: product created, stock adjusted, shift opened/closed, sale created.
+  Progres: event-event inti tersebut sudah dicatat melalui `PosAuditLogger`.
+- [~] Permission dan menu sesuai role.
+  Progres: permission POS sudah didefinisikan dan pembatasan akses backend sudah dipakai; menu/UX role-based masih perlu audit akhir agar semua entry sidebar dan visibilitas benar-benar konsisten.
 
 Non-goal tahap 1:
 
@@ -57,29 +73,46 @@ Non-goal tahap 1:
 
 ### Tahap 2 - Operational Hardening
 
-- Void/refund dengan approval administrator dan reason wajib.
-- Cash in/out drawer movement di luar penjualan.
-- Shift handover: kasir keluar, kasir masuk, admin approval untuk selisih cash.
-- Receipt/invoice printable.
-- Stock opname dan adjustment batch.
-- Low stock alert.
-- Sales report per shift, cashier, product, payment method.
-- Export CSV/PDF.
+- [~] Void/refund dengan approval administrator dan reason wajib.
+  Progres: struktur data sale sudah punya field `voided_by`, `voided_at`, `void_reason`, dan status `voided`; flow service/controller/UI approval belum dibuat.
+- [ ] Cash in/out drawer movement di luar penjualan.
+  Progres: belum ada model/flow drawer movement khusus di luar payment sale.
+- [ ] Shift handover: kasir keluar, kasir masuk, admin approval untuk selisih cash.
+  Progres: belum ada handover antar cashier atau approval threshold selisih cash.
+- [ ] Receipt/invoice printable.
+  Progres: ada halaman detail sale, tetapi belum ada layout print/thermal/printable action.
+- [~] Stock opname dan adjustment batch.
+  Progres: adjustment stok manual per variant sudah ada; batch stock opname dan workflow count belum ada.
+- [ ] Low stock alert.
+  Progres: stok tersedia di data model dan UI, tetapi alert/rule threshold belum ada.
+- [~] Sales report per shift, cashier, product, payment method.
+  Progres: list shifts, sales, finance, dan filter dasar sudah ada; report agregat khusus per dimensi belum lengkap.
+- [ ] Export CSV/PDF.
+  Progres: belum ada export.
 
 ### Tahap 3 - Payment Provider
 
-- Abstraction `PaymentGateway` dengan driver `cash`, `dummy`, `midtrans`.
-- QRIS Midtrans charge, callback/webhook verification, idempotency key.
-- Payment pending/expired/paid lifecycle.
-- Reconcile provider settlement vs finance entry.
+- [ ] Abstraction `PaymentGateway` dengan driver `cash`, `dummy`, `midtrans`.
+  Progres: method payment masih berupa enum/options dan belum masuk abstraction gateway.
+- [ ] QRIS Midtrans charge, callback/webhook verification, idempotency key.
+  Progres: belum ada integrasi Midtrans.
+- [ ] Payment pending/expired/paid lifecycle.
+  Progres: status payment dasar ada di schema, tetapi lifecycle provider belum diimplementasikan.
+- [ ] Reconcile provider settlement vs finance entry.
+  Progres: belum ada.
 
 ### Tahap 4 - Scale dan Mobile API
 
-- API token/mobile auth untuk POS Expo app.
-- Offline queue dengan idempotency key dan conflict handling.
-- Multi-store, register/terminal, warehouse/location.
-- Product variants UI.
-- Role khusus inventory/finance/store manager.
+- [~] API token/mobile auth untuk POS Expo app.
+  Progres: mobile auth/token generik sudah ada di backend, tetapi API domain khusus POS untuk Expo app belum dibuat.
+- [ ] Offline queue dengan idempotency key dan conflict handling.
+  Progres: belum ada.
+- [ ] Multi-store, register/terminal, warehouse/location.
+  Progres: belum ada model/store/register/warehouse; saat ini shift masih scoped per cashier.
+- [~] Product variants UI.
+  Progres: data model variant sudah dipakai sebagai fondasi transaksi, tetapi UI masih fokus ke default variant tunggal.
+- [ ] Role khusus inventory/finance/store manager.
+  Progres: role masa depan baru tercatat di dokumen, belum diimplementasikan.
 
 ## Flow Utama
 
