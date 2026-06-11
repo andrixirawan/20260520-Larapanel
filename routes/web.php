@@ -67,6 +67,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:'.AccessControl::PERMISSION_POS_PRODUCTS_MANAGE)
         ->name('pos.products.store');
 
+    Route::patch('pos/products/{product}', [PosProductController::class, 'update'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_PRODUCTS_MANAGE)
+        ->name('pos.products.update');
+
+    Route::delete('pos/products/{product}', [PosProductController::class, 'destroy'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_PRODUCTS_MANAGE)
+        ->name('pos.products.destroy');
+
     Route::post('pos/product-variants/{variant}/stock-adjustments', [PosProductController::class, 'adjustStock'])
         ->middleware('can:'.AccessControl::PERMISSION_POS_INVENTORY_MANAGE)
         ->name('pos.product-variants.stock-adjustments.store');

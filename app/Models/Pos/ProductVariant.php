@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Pos\SaleItem;
 
 #[Fillable([
     'product_id',
@@ -53,5 +54,10 @@ class ProductVariant extends Model
     public function movements(): HasMany
     {
         return $this->hasMany(InventoryMovement::class, 'product_variant_id');
+    }
+
+    public function saleItems(): HasMany
+    {
+        return $this->hasMany(SaleItem::class, 'product_variant_id');
     }
 }

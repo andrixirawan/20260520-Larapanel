@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Pos\SaleItem;
 
 #[Fillable(['name', 'sku', 'status', 'description', 'metadata', 'created_by', 'updated_by'])]
 class Product extends Model
@@ -37,6 +38,11 @@ class Product extends Model
     public function defaultVariant(): HasOne
     {
         return $this->hasOne(ProductVariant::class, 'product_id')->where('is_default', true);
+    }
+
+    public function saleItems(): HasMany
+    {
+        return $this->hasMany(SaleItem::class, 'product_id');
     }
 
     public function creator(): BelongsTo

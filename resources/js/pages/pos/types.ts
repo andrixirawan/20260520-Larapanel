@@ -16,6 +16,8 @@ export type PosProductRow = PosProduct & {
     status: string;
     cost_price: number | null;
     allow_backorder: boolean;
+    description: string | null;
+    has_sales: boolean;
     created_at: string | null;
 };
 

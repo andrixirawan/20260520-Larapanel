@@ -6,6 +6,8 @@ import {
     ClipboardList,
     Loader2,
     PackagePlus,
+    Pencil,
+    Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -28,6 +30,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { Auth } from '@/types';
 import type { TableFilters } from '@/types/pagination';
@@ -43,6 +52,7 @@ type ProductFormState = {
     description: string;
     track_inventory: boolean;
     allow_backorder: boolean;
+    status: 'active' | 'inactive';
 };
 
 const initialProductForm: ProductFormState = {
@@ -54,6 +64,7 @@ const initialProductForm: ProductFormState = {
     description: '',
     track_inventory: true,
     allow_backorder: false,
+    status: 'active',
 };
 
 export default function PosProducts({
@@ -68,8 +79,11 @@ export default function PosProducts({
     const canManageInventory = auth.permissions['pos.inventory.manage'];
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [productForm, setProductForm] =
         useState<ProductFormState>(initialProductForm);
+    const [editForm, setEditForm] = useState<ProductFormState>(initialProductForm);
     const [adjustment, setAdjustment] = useState({
         quantity_delta: '',
         notes: '',
@@ -79,6 +93,8 @@ export default function PosProducts({
     );
     const [isCreating, setIsCreating] = useState(false);
     const [isAdjusting, setIsAdjusting] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const columns = useMemo<ColumnDef<PosProductRow>[]>(
         () => [
             {
@@ -156,26 +172,71 @@ export default function PosProducts({
                     cellClassName: 'text-right',
                 },
                 cell: ({ row }) =>
-                    canManageInventory &&
-                    row.original.product_variant_public_id ? (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                                setSelectedProduct(row.original);
-                                setAdjustDialogOpen(true);
-                            }}
-                        >
-                            Adjust stock
-                        </Button>
-                    ) : (
-                        <span className="text-sm text-muted-foreground">
-                            No access
-                        </span>
+                    (
+                        <div className="flex justify-end gap-2">
+                            {canManageInventory &&
+                            row.original.product_variant_public_id ? (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setSelectedProduct(row.original);
+                                        setAdjustDialogOpen(true);
+                                    }}
+                                >
+                                    Adjust stock
+                                </Button>
+                            ) : null}
+                            {canManageProducts ? (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setSelectedProduct(row.original);
+                                        setEditForm({
+                                            name: row.original.name,
+                                            sku: row.original.sku ?? '',
+                                            price: String(row.original.price),
+                                            cost_price:
+                                                row.original.cost_price === null
+                                                    ? ''
+                                                    : String(row.original.cost_price),
+                                            initial_quantity: '',
+                                            description: row.original.description ?? '',
+                                            track_inventory: row.original.track_inventory,
+                                            allow_backorder:
+                                                row.original.allow_backorder,
+                                            status:
+                                                row.original.status === 'inactive'
+                                                    ? 'inactive'
+                                                    : 'active',
+                                        });
+                                        setEditDialogOpen(true);
+                                    }}
+                                >
+                                    <Pencil />
+                                    Edit
+                                </Button>
+                            ) : null}
+                            {canManageProducts ? (
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={row.original.has_sales}
+                                    onClick={() => {
+                                        setSelectedProduct(row.original);
+                                        setDeleteDialogOpen(true);
+                                    }}
+                                >
+                                    <Trash2 />
+                                    Delete
+                                </Button>
+                            ) : null}
+                        </div>
                     ),
             },
         ],
-        [canManageInventory],
+        [canManageInventory, canManageProducts],
     );
 
     const totalVisibleStock = products.data.reduce(
@@ -243,6 +304,65 @@ export default function PosProducts({
                 },
             },
         );
+    };
+
+    const updateProduct = () => {
+        if (!selectedProduct) {
+            return;
+        }
+
+        const loadingToast = toast.loading('Updating product...');
+
+        router.patch(
+            `/pos/products/${selectedProduct.public_id}`,
+            {
+                ...editForm,
+                track_inventory: editForm.track_inventory ? 1 : 0,
+                allow_backorder: editForm.allow_backorder ? 1 : 0,
+            },
+            {
+                preserveScroll: true,
+                onStart: () => setIsUpdating(true),
+                onError: (errors) =>
+                    toast.error(firstErrorMessage(errors), {
+                        id: loadingToast,
+                    }),
+                onSuccess: () => {
+                    setEditDialogOpen(false);
+                    setSelectedProduct(null);
+                    setEditForm(initialProductForm);
+                },
+                onFinish: () => {
+                    setIsUpdating(false);
+                    toast.dismiss(loadingToast);
+                },
+            },
+        );
+    };
+
+    const deleteProduct = () => {
+        if (!selectedProduct) {
+            return;
+        }
+
+        const loadingToast = toast.loading('Deleting product...');
+
+        router.delete(`/pos/products/${selectedProduct.public_id}`, {
+            preserveScroll: true,
+            onStart: () => setIsDeleting(true),
+            onError: (errors) =>
+                toast.error(firstErrorMessage(errors), {
+                    id: loadingToast,
+                }),
+            onSuccess: () => {
+                setDeleteDialogOpen(false);
+                setSelectedProduct(null);
+            },
+            onFinish: () => {
+                setIsDeleting(false);
+                toast.dismiss(loadingToast);
+            },
+        });
     };
 
     return (
@@ -340,6 +460,17 @@ export default function PosProducts({
                         Produk baru masih dibuat sebagai default variant.
                         Inventory, pricing, dan historinya sudah disiapkan agar
                         nanti mudah naik ke multi-variant.
+                    </AlertDescription>
+                </Alert>
+
+                <Alert>
+                    <ClipboardList />
+                    <AlertTitle>Product maintenance</AlertTitle>
+                    <AlertDescription>
+                        Produk yang sudah pernah masuk transaksi tidak boleh dihapus
+                        agar histori tetap aman. Untuk kasus seperti SKU salah,
+                        gunakan edit. Jika produk sudah tidak dipakai, ubah status
+                        ke inactive agar hilang dari terminal.
                     </AlertDescription>
                 </Alert>
 
@@ -555,6 +686,199 @@ export default function PosProducts({
                                 <PackagePlus />
                             )}
                             Create product
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit POS product</DialogTitle>
+                        <DialogDescription>
+                            Perubahan nama, SKU, harga, dan status tidak akan
+                            mengubah snapshot histori item yang sudah terjual.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                            <Input
+                                value={editForm.name}
+                                onChange={(event) =>
+                                    setEditForm((state) => ({
+                                        ...state,
+                                        name: event.target.value,
+                                    }))
+                                }
+                                placeholder="Product name"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Input
+                                value={editForm.sku}
+                                onChange={(event) =>
+                                    setEditForm((state) => ({
+                                        ...state,
+                                        sku: event.target.value,
+                                    }))
+                                }
+                                placeholder="SKU"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Input
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                value={editForm.price}
+                                onChange={(event) =>
+                                    setEditForm((state) => ({
+                                        ...state,
+                                        price: event.target.value,
+                                    }))
+                                }
+                                placeholder="Selling price"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editForm.cost_price}
+                                onChange={(event) =>
+                                    setEditForm((state) => ({
+                                        ...state,
+                                        cost_price: event.target.value,
+                                    }))
+                                }
+                                placeholder="Cost price / HPP"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Select
+                                value={editForm.status}
+                                onValueChange={(value: 'active' | 'inactive') =>
+                                    setEditForm((state) => ({
+                                        ...state,
+                                        status: value,
+                                    }))
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="inactive">
+                                        Inactive
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Inactive akan menyembunyikan produk dari terminal POS.
+                            </p>
+                        </div>
+                        <div className="grid gap-3 rounded-xl border p-4">
+                            <label className="flex items-center gap-3 text-sm font-medium">
+                                <Checkbox
+                                    checked={editForm.track_inventory}
+                                    onCheckedChange={(checked) =>
+                                        setEditForm((state) => ({
+                                            ...state,
+                                            track_inventory: Boolean(checked),
+                                        }))
+                                    }
+                                />
+                                Track inventory
+                            </label>
+                            <label className="flex items-center gap-3 text-sm font-medium">
+                                <Checkbox
+                                    checked={editForm.allow_backorder}
+                                    onCheckedChange={(checked) =>
+                                        setEditForm((state) => ({
+                                            ...state,
+                                            allow_backorder: Boolean(checked),
+                                        }))
+                                    }
+                                />
+                                Allow backorder
+                            </label>
+                        </div>
+                        <div className="md:col-span-2">
+                            <Textarea
+                                value={editForm.description}
+                                onChange={(event) =>
+                                    setEditForm((state) => ({
+                                        ...state,
+                                        description: event.target.value,
+                                    }))
+                                }
+                                placeholder="Description"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setEditDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={updateProduct}
+                            disabled={!editForm.name || !editForm.price || isUpdating}
+                        >
+                            {isUpdating ? (
+                                <Loader2 className="animate-spin" />
+                            ) : (
+                                <Pencil />
+                            )}
+                            Save changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete product</DialogTitle>
+                        <DialogDescription>
+                            Produk hanya bisa dihapus jika belum pernah dipakai
+                            di transaksi.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="rounded-xl border bg-muted/40 p-4 text-sm">
+                        {selectedProduct ? (
+                            <>
+                                <div className="font-medium">
+                                    {selectedProduct.name}
+                                </div>
+                                <div className="mt-1 text-muted-foreground">
+                                    SKU: {selectedProduct.sku ?? '-'}
+                                </div>
+                            </>
+                        ) : null}
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeleteDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={deleteProduct}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? (
+                                <Loader2 className="animate-spin" />
+                            ) : (
+                                <Trash2 />
+                            )}
+                            Delete product
                         </Button>
                     </DialogFooter>
                 </DialogContent>

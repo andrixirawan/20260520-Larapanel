@@ -102,6 +102,85 @@ class PosInventoryService
         });
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function updateProduct(User $actor, Product $product, array $data): Product
+    {
+        return DB::transaction(function () use ($actor, $product, $data): Product {
+            $product->loadMissing('defaultVariant');
+
+            $variant = $product->defaultVariant;
+
+            if (! $variant) {
+                throw ValidationException::withMessages([
+                    'product' => __('Default variant not found for this product.'),
+                ]);
+            }
+
+            $sku = trim((string) ($data['sku'] ?? ''));
+            if ($sku === '') {
+                $sku = $product->sku ?: $variant->sku ?: $this->resolveSku($data);
+            }
+
+            $beforeProduct = $product->toArray();
+            $beforeVariant = $variant->toArray();
+
+            $product->update([
+                'name' => $data['name'],
+                'sku' => $sku,
+                'status' => $data['status'] ?? $product->status,
+                'description' => $data['description'] ?? null,
+                'updated_by' => $actor->id,
+            ]);
+
+            $variant->update([
+                'sku' => $sku,
+                'price' => $this->money($data['price']),
+                'cost_price' => isset($data['cost_price']) && $data['cost_price'] !== ''
+                    ? $this->money($data['cost_price'])
+                    : null,
+                'track_inventory' => (bool) ($data['track_inventory'] ?? true),
+                'allow_backorder' => (bool) ($data['allow_backorder'] ?? false),
+            ]);
+
+            $this->auditLogger->log($actor, 'pos.product.updated', $product, [
+                'product' => $beforeProduct,
+                'variant' => $beforeVariant,
+            ], [
+                'product' => $product->fresh()->toArray(),
+                'variant' => $variant->fresh()->toArray(),
+            ]);
+
+            return $product->fresh()->load('defaultVariant.stock');
+        });
+    }
+
+    public function deleteProduct(User $actor, Product $product): void
+    {
+        DB::transaction(function () use ($actor, $product): void {
+            $product->loadMissing(['defaultVariant.saleItems', 'saleItems', 'variants']);
+
+            $variant = $product->defaultVariant;
+            $hasTransactions = $product->saleItems()->exists()
+                || ($variant?->saleItems()->exists() ?? false);
+
+            if ($hasTransactions) {
+                throw ValidationException::withMessages([
+                    'product' => __('This product already has sales history and cannot be deleted. Set it inactive instead.'),
+                ]);
+            }
+
+            foreach ($product->variants as $item) {
+                $item->delete();
+            }
+
+            $product->delete();
+
+            $this->auditLogger->log($actor, 'pos.product.deleted', $product, $product->toArray(), null);
+        });
+    }
+
     public function moveStock(
         User $actor,
         ProductVariant $variant,

@@ -50,6 +50,8 @@ class PosProductController extends Controller
             ->withQueryString()
             ->through(function (Product $product): array {
                 $variant = $product->defaultVariant;
+                $hasSales = $product->saleItems()->exists()
+                    || ($variant?->saleItems()->exists() ?? false);
 
                 return [
                     'public_id' => $product->public_id,
@@ -62,6 +64,8 @@ class PosProductController extends Controller
                     'track_inventory' => (bool) $variant?->track_inventory,
                     'allow_backorder' => (bool) $variant?->allow_backorder,
                     'stock' => (float) ($variant?->stock?->quantity_on_hand ?? 0),
+                    'description' => $product->description,
+                    'has_sales' => $hasSales,
                     'created_at' => $product->created_at?->toISOString(),
                 ];
             });
@@ -119,6 +123,43 @@ class PosProductController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Stock adjusted.')]);
+
+        return back();
+    }
+
+    public function update(Request $request, Product $product): RedirectResponse
+    {
+        $defaultVariant = $product->defaultVariant()->first();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'sku' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('pos_products', 'sku')->ignore($product->id),
+                Rule::unique('pos_product_variants', 'sku')->ignore($defaultVariant?->id),
+            ],
+            'price' => ['required', 'numeric', 'min:0.01'],
+            'cost_price' => ['nullable', 'numeric', 'min:0'],
+            'track_inventory' => ['nullable', 'boolean'],
+            'allow_backorder' => ['nullable', 'boolean'],
+            'description' => ['nullable', 'string'],
+            'status' => ['required', 'string', Rule::in([Product::STATUS_ACTIVE, Product::STATUS_INACTIVE])],
+        ]);
+
+        $this->inventoryService->updateProduct($request->user(), $product, $validated);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Product updated.')]);
+
+        return back();
+    }
+
+    public function destroy(Request $request, Product $product): RedirectResponse
+    {
+        $this->inventoryService->deleteProduct($request->user(), $product);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Product deleted.')]);
 
         return back();
     }
