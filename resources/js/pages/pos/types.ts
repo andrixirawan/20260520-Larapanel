@@ -25,6 +25,9 @@ export type PosShift = {
     public_id: string;
     opening_cash: number;
     cash_sales_total: number;
+    drawer_cash_in_total: number;
+    drawer_cash_out_total: number;
+    net_cash_movement_total: number;
     expected_cash: number;
     opened_at: string | null;
 };

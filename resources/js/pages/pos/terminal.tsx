@@ -1,5 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    ArrowDownLeft,
+    ArrowUpRight,
     Banknote,
     Boxes,
     Clock3,
@@ -259,12 +261,20 @@ export default function PosTerminal({
     openingGuide,
     paymentMethods,
     recentSales,
+    recentCashMovements,
 }: {
     products: PosProduct[];
     openShift: PosShift | null;
     openingGuide: PosOpeningGuide | null;
     paymentMethods: Record<string, string>;
     recentSales: RecentSale[];
+    recentCashMovements: Array<{
+        public_id: string;
+        type: string;
+        amount: number;
+        notes: string | null;
+        created_at: string | null;
+    }>;
 }) {
     const {
         cart,
@@ -290,8 +300,14 @@ export default function PosTerminal({
     const [openingNotes, setOpeningNotes] = useState('');
     const [countedCash, setCountedCash] = useState('');
     const [closingNotes, setClosingNotes] = useState('');
+    const [cashMovementDialogOpen, setCashMovementDialogOpen] = useState(false);
+    const [cashMovementType, setCashMovementType] = useState('cash_in');
+    const [cashMovementAmount, setCashMovementAmount] = useState('');
+    const [cashMovementNotes, setCashMovementNotes] = useState('');
     const [isOpeningShift, setIsOpeningShift] = useState(false);
     const [isClosingShift, setIsClosingShift] = useState(false);
+    const [isSubmittingCashMovement, setIsSubmittingCashMovement] =
+        useState(false);
     const [isSubmittingSale, setIsSubmittingSale] = useState(false);
 
     const filteredProducts = products.filter((product) =>
@@ -311,6 +327,9 @@ export default function PosTerminal({
         (product) => !product.track_inventory || product.stock > 0,
     ).length;
     const expectedCash = openShift?.expected_cash ?? 0;
+    const drawerCashInTotal = openShift?.drawer_cash_in_total ?? 0;
+    const drawerCashOutTotal = openShift?.drawer_cash_out_total ?? 0;
+    const netCashMovementTotal = openShift?.net_cash_movement_total ?? 0;
     const countedCashValue = Number(countedCash || 0);
     const closingDifference = countedCash
         ? countedCashValue - expectedCash
@@ -339,6 +358,41 @@ export default function PosTerminal({
                 },
                 onFinish: () => {
                     setIsOpeningShift(false);
+                    toast.dismiss(loadingToast);
+                },
+            },
+        );
+    };
+
+    const recordCashMovement = () => {
+        if (!openShift) {
+            return;
+        }
+
+        const loadingToast = toast.loading('Recording cash movement...');
+
+        router.post(
+            `/pos/shifts/${openShift.public_id}/cash-movements`,
+            {
+                type: cashMovementType,
+                amount: cashMovementAmount,
+                notes: cashMovementNotes,
+            },
+            {
+                preserveScroll: true,
+                onStart: () => setIsSubmittingCashMovement(true),
+                onError: (errors) =>
+                    toast.error(firstErrorMessage(errors), {
+                        id: loadingToast,
+                    }),
+                onSuccess: () => {
+                    setCashMovementDialogOpen(false);
+                    setCashMovementType('cash_in');
+                    setCashMovementAmount('');
+                    setCashMovementNotes('');
+                },
+                onFinish: () => {
+                    setIsSubmittingCashMovement(false);
                     toast.dismiss(loadingToast);
                 },
             },
@@ -719,6 +773,15 @@ export default function PosTerminal({
                                     Cash sales {posCurrency.format(openShift.cash_sales_total)}
                                 </div>
                                 <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                                    Cash in {posCurrency.format(drawerCashInTotal)}
+                                </div>
+                                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                                    Cash out {posCurrency.format(drawerCashOutTotal)}
+                                </div>
+                                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                                    Drawer net {posCurrency.format(netCashMovementTotal)}
+                                </div>
+                                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
                                     Expected {posCurrency.format(openShift.expected_cash)}
                                 </div>
                                 <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
@@ -731,6 +794,13 @@ export default function PosTerminal({
                         </div>
 
                         <div className="flex flex-wrap gap-2">
+                            <Button
+                                variant="secondary"
+                                onClick={() => setCashMovementDialogOpen(true)}
+                            >
+                                <Wallet />
+                                Cash in/out
+                            </Button>
                             <Button
                                 variant="secondary"
                                 onClick={() => setCloseShiftOpen(true)}
@@ -994,6 +1064,26 @@ export default function PosTerminal({
                                             )}
                                         </span>
                                     </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">
+                                            Drawer cash in
+                                        </span>
+                                        <span>
+                                            {posCurrency.format(
+                                                openShift.drawer_cash_in_total,
+                                            )}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">
+                                            Drawer cash out
+                                        </span>
+                                        <span>
+                                            {posCurrency.format(
+                                                openShift.drawer_cash_out_total,
+                                            )}
+                                        </span>
+                                    </div>
                                     <div className="flex items-center justify-between font-semibold">
                                         <span>Expected cash</span>
                                         <span>
@@ -1060,6 +1150,158 @@ export default function PosTerminal({
                                     <Clock3 />
                                 )}
                                 Close shift
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog
+                    open={cashMovementDialogOpen}
+                    onOpenChange={setCashMovementDialogOpen}
+                >
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Cash in/out drawer</DialogTitle>
+                            <DialogDescription>
+                                Catat pergerakan kas di luar penjualan agar expected
+                                cash shift tetap akurat.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            <div className="rounded-2xl border bg-muted/40 p-4 text-sm">
+                                <div className="font-medium">
+                                    Drawer snapshot
+                                </div>
+                                <div className="mt-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">
+                                            Cash in total
+                                        </span>
+                                        <span>
+                                            {posCurrency.format(drawerCashInTotal)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">
+                                            Cash out total
+                                        </span>
+                                        <span>
+                                            {posCurrency.format(drawerCashOutTotal)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between font-semibold">
+                                        <span>Net movement</span>
+                                        <span>
+                                            {posCurrency.format(
+                                                netCashMovementTotal,
+                                            )}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Select
+                                value={cashMovementType}
+                                onValueChange={setCashMovementType}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Movement type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="cash_in">
+                                        Cash in
+                                    </SelectItem>
+                                    <SelectItem value="cash_out">
+                                        Cash out
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <Input
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                value={cashMovementAmount}
+                                onChange={(event) =>
+                                    setCashMovementAmount(event.target.value)
+                                }
+                                placeholder="Amount"
+                            />
+                            <Textarea
+                                value={cashMovementNotes}
+                                onChange={(event) =>
+                                    setCashMovementNotes(event.target.value)
+                                }
+                                placeholder="Reason, e.g. petty cash, supplier payment, drawer refill"
+                            />
+
+                            <div className="space-y-3">
+                                <div className="text-sm font-medium">
+                                    Recent cash movements
+                                </div>
+                                {recentCashMovements.length ? (
+                                    recentCashMovements.map((movement) => (
+                                        <div
+                                            key={movement.public_id}
+                                            className="rounded-xl border bg-muted/20 p-3 text-sm"
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2 font-medium">
+                                                    {movement.type === 'cash_in' ? (
+                                                        <ArrowDownLeft className="size-4 text-emerald-600" />
+                                                    ) : (
+                                                        <ArrowUpRight className="size-4 text-destructive" />
+                                                    )}
+                                                    <span>
+                                                        {movement.type === 'cash_in'
+                                                            ? 'Cash in'
+                                                            : 'Cash out'}
+                                                    </span>
+                                                </div>
+                                                <span>
+                                                    {posCurrency.format(
+                                                        movement.amount,
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <div className="mt-1 text-xs text-muted-foreground">
+                                                {formatPosDateTime(
+                                                    movement.created_at,
+                                                )}
+                                            </div>
+                                            <div className="mt-2 text-muted-foreground">
+                                                {movement.notes ?? '-'}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                                        Belum ada cash movement di shift ini.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setCashMovementDialogOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={recordCashMovement}
+                                disabled={
+                                    !cashMovementAmount ||
+                                    !cashMovementNotes.trim() ||
+                                    isSubmittingCashMovement
+                                }
+                            >
+                                {isSubmittingCashMovement ? (
+                                    <Loader2 className="animate-spin" />
+                                ) : (
+                                    <Wallet />
+                                )}
+                                Record movement
                             </Button>
                         </DialogFooter>
                     </DialogContent>

@@ -59,6 +59,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:'.AccessControl::PERMISSION_POS_SHIFTS_CLOSE)
         ->name('pos.shifts.close');
 
+    Route::post('pos/shifts/{shift}/cash-movements', [PosShiftController::class, 'storeCashMovement'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SHIFTS_CLOSE)
+        ->name('pos.shifts.cash-movements.store');
+
     Route::get('pos/products', [PosProductController::class, 'index'])
         ->middleware('can:'.AccessControl::PERMISSION_POS_PRODUCTS_VIEW)
         ->name('pos.products.index');

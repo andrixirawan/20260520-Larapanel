@@ -2,10 +2,12 @@
 
 namespace App\Services\Pos;
 
+use App\Models\Pos\FinanceEntry;
 use App\Models\Pos\Payment;
 use App\Models\Pos\Shift;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class PosShiftService
@@ -86,8 +88,71 @@ class PosShiftService
         });
     }
 
+    public function recordCashMovement(
+        User $actor,
+        Shift $shift,
+        string $type,
+        float|int|string $amount,
+        string $notes,
+    ): FinanceEntry {
+        $movementType = (string) $type;
+        $movementAmount = round((float) $amount, 2);
+        $movementNotes = trim($notes);
+
+        validator(
+            [
+                'type' => $movementType,
+                'amount' => $movementAmount,
+                'notes' => $movementNotes,
+            ],
+            [
+                'type' => ['required', Rule::in([FinanceEntry::TYPE_CASH_IN, FinanceEntry::TYPE_CASH_OUT])],
+                'amount' => ['required', 'numeric', 'min:0.01'],
+                'notes' => ['required', 'string', 'max:500'],
+            ],
+        )->validate();
+
+        return DB::transaction(function () use ($actor, $shift, $movementType, $movementAmount, $movementNotes): FinanceEntry {
+            $lockedShift = Shift::query()
+                ->whereKey($shift->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedShift->status !== Shift::STATUS_OPEN) {
+                throw ValidationException::withMessages([
+                    'shift' => __('This shift is already closed.'),
+                ]);
+            }
+
+            $entry = FinanceEntry::create([
+                'entry_date' => now()->toDateString(),
+                'shift_id' => $lockedShift->id,
+                'type' => $movementType,
+                'direction' => $movementType === FinanceEntry::TYPE_CASH_IN
+                    ? FinanceEntry::DIRECTION_CREDIT
+                    : FinanceEntry::DIRECTION_DEBIT,
+                'payment_method' => Payment::METHOD_CASH,
+                'amount' => $this->money($movementAmount),
+                'created_by' => $actor->id,
+                'notes' => $movementNotes,
+                'metadata' => [
+                    'source' => 'drawer_movement',
+                ],
+            ]);
+
+            $this->auditLogger->log($actor, 'pos.shift.cash_movement.recorded', $entry, null, [
+                'shift_id' => $lockedShift->id,
+                'type' => $movementType,
+                'amount' => $entry->amount,
+                'notes' => $movementNotes,
+            ]);
+
+            return $entry;
+        });
+    }
+
     /**
-     * @return array{opening_cash: float, cash_sales_total: float, expected_cash: float}
+     * @return array{opening_cash: float, cash_sales_total: float, drawer_cash_in_total: float, drawer_cash_out_total: float, net_cash_movement_total: float, expected_cash: float}
      */
     public function cashSnapshot(Shift $shift): array
     {
@@ -97,13 +162,29 @@ class PosShiftService
             ->whereHas('sale', fn ($query) => $query->where('shift_id', $shift->id))
             ->sum('amount');
 
+        $cashIn = FinanceEntry::query()
+            ->where('shift_id', $shift->id)
+            ->where('type', FinanceEntry::TYPE_CASH_IN)
+            ->sum('amount');
+
+        $cashOut = FinanceEntry::query()
+            ->where('shift_id', $shift->id)
+            ->where('type', FinanceEntry::TYPE_CASH_OUT)
+            ->sum('amount');
+
         $openingCash = round((float) $shift->opening_cash, 2);
         $cashSalesTotal = round((float) $cashSales, 2);
+        $drawerCashInTotal = round((float) $cashIn, 2);
+        $drawerCashOutTotal = round((float) $cashOut, 2);
+        $netCashMovementTotal = round($drawerCashInTotal - $drawerCashOutTotal, 2);
 
         return [
             'opening_cash' => $openingCash,
             'cash_sales_total' => $cashSalesTotal,
-            'expected_cash' => round($openingCash + $cashSalesTotal, 2),
+            'drawer_cash_in_total' => $drawerCashInTotal,
+            'drawer_cash_out_total' => $drawerCashOutTotal,
+            'net_cash_movement_total' => $netCashMovementTotal,
+            'expected_cash' => round($openingCash + $cashSalesTotal + $netCashMovementTotal, 2),
         ];
     }
 

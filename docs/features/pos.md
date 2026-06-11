@@ -75,8 +75,8 @@ Non-goal tahap 1:
 
 - [~] Void/refund dengan approval administrator dan reason wajib.
   Progres: void sale oleh administrator sudah ada lengkap dengan reason wajib, reversal stok, reversal finance, status refunded, dan audit log. Bagian refund terpisah di luar void belum dibuat.
-- [ ] Cash in/out drawer movement di luar penjualan.
-  Progres: belum ada model/flow drawer movement khusus di luar payment sale.
+- [x] Cash in/out drawer movement di luar penjualan.
+  Progres: cash in/out sudah bisa dicatat pada shift aktif dari terminal, masuk ke finance ledger, mempengaruhi expected cash, tampil di close shift snapshot, dan tercatat di audit log.
 - [ ] Shift handover: kasir keluar, kasir masuk, admin approval untuk selisih cash.
   Progres: belum ada handover antar cashier atau approval threshold selisih cash.
 - [ ] Receipt/invoice printable.

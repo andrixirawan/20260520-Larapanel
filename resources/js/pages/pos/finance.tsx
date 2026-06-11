@@ -58,6 +58,9 @@ export default function PosFinance({
                         <Badge variant="secondary">
                             {row.original.direction}
                         </Badge>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                            {row.original.notes ?? '-'}
+                        </div>
                     </>
                 ),
             },

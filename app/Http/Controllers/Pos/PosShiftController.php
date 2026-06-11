@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Pos;
 
 use App\Http\Controllers\Controller;
+use App\Models\Pos\FinanceEntry;
 use App\Models\Pos\Shift;
 use App\Services\Pos\PosShiftService;
 use App\Support\AccessControl;
 use App\Support\TableQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -54,19 +56,25 @@ class PosShiftController extends Controller
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString()
-            ->through(fn (Shift $shift): array => [
-                'public_id' => $shift->public_id,
-                'cashier' => $shift->cashier?->name,
-                'opened_by' => $shift->openedBy?->name,
-                'closed_by' => $shift->closedBy?->name,
-                'status' => $shift->status,
-                'opening_cash' => (float) $shift->opening_cash,
-                'expected_cash' => $shift->expected_cash ? (float) $shift->expected_cash : null,
-                'counted_cash' => $shift->counted_cash ? (float) $shift->counted_cash : null,
-                'cash_difference' => $shift->cash_difference ? (float) $shift->cash_difference : null,
-                'opened_at' => $shift->opened_at?->toISOString(),
-                'closed_at' => $shift->closed_at?->toISOString(),
-            ]);
+            ->through(function (Shift $shift): array {
+                $snapshot = $shift->status === Shift::STATUS_OPEN
+                    ? $this->shiftService->cashSnapshot($shift)
+                    : null;
+
+                return [
+                    'public_id' => $shift->public_id,
+                    'cashier' => $shift->cashier?->name,
+                    'opened_by' => $shift->openedBy?->name,
+                    'closed_by' => $shift->closedBy?->name,
+                    'status' => $shift->status,
+                    'opening_cash' => (float) $shift->opening_cash,
+                    'expected_cash' => $snapshot['expected_cash'] ?? ($shift->expected_cash ? (float) $shift->expected_cash : null),
+                    'counted_cash' => $shift->counted_cash ? (float) $shift->counted_cash : null,
+                    'cash_difference' => $shift->cash_difference ? (float) $shift->cash_difference : null,
+                    'opened_at' => $shift->opened_at?->toISOString(),
+                    'closed_at' => $shift->closed_at?->toISOString(),
+                ];
+            });
 
         return Inertia::render('pos/shifts', [
             'filters' => [
@@ -117,6 +125,32 @@ class PosShiftController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Shift closed.')]);
+
+        return back();
+    }
+
+    public function storeCashMovement(Request $request, Shift $shift): RedirectResponse
+    {
+        abort_unless(
+            $shift->cashier_id === $request->user()->id || $request->user()->can(AccessControl::PERMISSION_POS_SHIFTS_MANAGE),
+            403,
+        );
+
+        $validated = $request->validate([
+            'type' => ['required', 'string', Rule::in([FinanceEntry::TYPE_CASH_IN, FinanceEntry::TYPE_CASH_OUT])],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'notes' => ['required', 'string', 'max:500'],
+        ]);
+
+        $this->shiftService->recordCashMovement(
+            $request->user(),
+            $shift,
+            $validated['type'],
+            $validated['amount'],
+            $validated['notes'],
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Drawer cash movement recorded.')]);
 
         return back();
     }

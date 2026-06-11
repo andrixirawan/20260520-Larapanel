@@ -30,6 +30,10 @@ class FinanceEntry extends Model
 
     public const TYPE_SALE_VOID = 'sale_void';
 
+    public const TYPE_CASH_IN = 'cash_in';
+
+    public const TYPE_CASH_OUT = 'cash_out';
+
     public const DIRECTION_CREDIT = 'credit';
 
     public const DIRECTION_DEBIT = 'debit';

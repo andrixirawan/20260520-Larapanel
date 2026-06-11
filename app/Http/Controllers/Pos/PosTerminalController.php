@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pos;
 
 use App\Http\Controllers\Controller;
+use App\Models\Pos\FinanceEntry;
 use App\Models\Pos\Payment;
 use App\Models\Pos\Product;
 use App\Models\Pos\Sale;
@@ -63,6 +64,23 @@ class PosTerminalController extends Controller
                 'created_at' => $sale->created_at?->toISOString(),
             ]);
 
+        $recentCashMovements = $openShift
+            ? FinanceEntry::query()
+                ->where('shift_id', $openShift->id)
+                ->whereIn('type', [FinanceEntry::TYPE_CASH_IN, FinanceEntry::TYPE_CASH_OUT])
+                ->latest()
+                ->limit(5)
+                ->get()
+                ->map(fn (FinanceEntry $entry): array => [
+                    'public_id' => $entry->public_id,
+                    'type' => $entry->type,
+                    'amount' => (float) $entry->amount,
+                    'notes' => $entry->notes,
+                    'created_at' => $entry->created_at?->toISOString(),
+                ])
+                ->values()
+            : [];
+
         return Inertia::render('pos/terminal', [
             'products' => $products,
             'openShift' => $openShift ? [
@@ -73,6 +91,7 @@ class PosTerminalController extends Controller
             'openingGuide' => $openShift ? null : $this->shiftService->openingGuide($user),
             'paymentMethods' => Payment::methodOptions(),
             'recentSales' => $recentSales,
+            'recentCashMovements' => $recentCashMovements,
         ]);
     }
 }
