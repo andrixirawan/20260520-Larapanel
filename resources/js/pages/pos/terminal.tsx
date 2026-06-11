@@ -10,13 +10,11 @@ import {
     Plus,
     ReceiptText,
     ShieldCheck,
-    ShoppingBag,
     ShoppingCart,
     Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import Heading from '@/components/heading';
 import { SearchInput } from '@/components/search-input';
 import {
     Alert,
@@ -701,128 +699,81 @@ export default function PosTerminal({
         <>
             <Head title="POS Terminal" />
 
-            <div className="flex h-full flex-1 flex-col gap-5 overflow-hidden p-4">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.8fr)]">
-                    <Card className="relative overflow-hidden border-none bg-[linear-gradient(140deg,rgba(15,23,42,1),rgba(30,41,59,1),rgba(8,145,178,0.92))] text-white shadow-xl">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.12),transparent_25%)]" />
-                        <CardContent className="relative p-6 md:p-7">
-                            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                                <div className="space-y-3">
-                                    <div className="flex flex-wrap gap-2">
-                                        <Badge className="bg-white/14 text-white hover:bg-white/14">
-                                            Shift {openShift.public_id.slice(-8)}
-                                        </Badge>
-                                        <Badge className="bg-white/14 text-white hover:bg-white/14">
-                                            Opened {formatPosDateTime(openShift.opened_at)}
-                                        </Badge>
-                                    </div>
-                                    <div>
-                                        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                                            POS terminal is live
-                                        </h1>
-                                        <p className="mt-2 max-w-xl text-sm leading-6 text-white/76">
-                                            Katalog, cart, payment, dan invoice
-                                            sekarang aktif di dalam shift yang
-                                            sedang berjalan.
-                                        </p>
-                                    </div>
+            <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden p-4">
+                <Card className="rounded-3xl border-none bg-[linear-gradient(120deg,rgba(15,23,42,1),rgba(30,41,59,1),rgba(8,145,178,0.92))] text-white shadow-lg">
+                    <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap gap-2">
+                                <Badge className="bg-white/14 text-white hover:bg-white/14">
+                                    Shift {openShift.public_id.slice(-8)}
+                                </Badge>
+                                <Badge className="bg-white/14 text-white hover:bg-white/14">
+                                    Opened {formatPosDateTime(openShift.opened_at)}
+                                </Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-2 text-sm text-white/80">
+                                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                                    Opening {posCurrency.format(openShift.opening_cash)}
                                 </div>
-
-                                <div className="flex flex-wrap gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() =>
-                                            setCloseShiftOpen(true)
-                                        }
-                                    >
-                                        <Clock3 />
-                                        Close shift
-                                    </Button>
-                                    <Button
-                                        asChild
-                                        variant="outline"
-                                        className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                                    >
-                                        <Link href="/pos/sales">
-                                            <ReceiptText />
-                                            Sales history
-                                        </Link>
-                                    </Button>
-                                    <Button
-                                        asChild
-                                        variant="outline"
-                                        className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                                    >
-                                        <Link href="/pos/products">
-                                            <Boxes />
-                                            Products
-                                        </Link>
-                                    </Button>
+                                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                                    Cash sales {posCurrency.format(openShift.cash_sales_total)}
+                                </div>
+                                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                                    Expected {posCurrency.format(openShift.expected_cash)}
+                                </div>
+                                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                                    Ready {availableCount}/{products.length} products
+                                </div>
+                                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                                    Cart {posCurrency.format(subtotal)}
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
 
-                    <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-                        {[
-                            {
-                                icon: Wallet,
-                                label: 'Opening cash',
-                                value: posCurrency.format(openShift.opening_cash),
-                            },
-                            {
-                                icon: Banknote,
-                                label: 'Cash sales',
-                                value: posCurrency.format(
-                                    openShift.cash_sales_total,
-                                ),
-                            },
-                            {
-                                icon: Wallet,
-                                label: 'Expected cash',
-                                value: posCurrency.format(
-                                    openShift.expected_cash,
-                                ),
-                            },
-                            {
-                                icon: PackageSearch,
-                                label: 'Available products',
-                                value: `${availableCount}/${products.length}`,
-                            },
-                            {
-                                icon: ShoppingBag,
-                                label: 'Cart total',
-                                value: posCurrency.format(subtotal),
-                            },
-                        ].map((item) => (
-                            <Card key={item.label}>
-                                <CardContent className="flex items-center gap-4 p-5">
-                                    <div className="rounded-2xl bg-muted p-3">
-                                        <item.icon className="size-5" />
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">
-                                            {item.label}
-                                        </div>
-                                        <div className="text-lg font-semibold">
-                                            {item.value}
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                variant="secondary"
+                                onClick={() => setCloseShiftOpen(true)}
+                            >
+                                <Clock3 />
+                                Close shift
+                            </Button>
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                            >
+                                <Link href="/pos/sales">
+                                    <ReceiptText />
+                                    Sales history
+                                </Link>
+                            </Button>
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                            >
+                                <Link href="/pos/products">
+                                    <Boxes />
+                                    Products
+                                </Link>
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
                     <section className="min-h-0 rounded-3xl border bg-card">
-                        <div className="flex flex-col gap-4 border-b p-5">
+                        <div className="flex flex-col gap-3 border-b p-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                <Heading
-                                    title="Catalog"
-                                    description="Tambah item ke cart dari produk aktif yang siap dijual."
-                                    variant="small"
-                                />
+                                <div>
+                                    <div className="text-lg font-semibold">
+                                        POS Catalog
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                        Produk aktif siap dijual langsung dari terminal.
+                                    </div>
+                                </div>
 
                                 <div className="flex items-center gap-2">
                                     <SearchInput
@@ -843,7 +794,7 @@ export default function PosTerminal({
                                 </div>
                             </div>
 
-                            <Alert>
+                            <Alert className="py-3">
                                 <ShieldCheck />
                                 <AlertTitle>Terminal mode</AlertTitle>
                                 <AlertDescription>
@@ -854,7 +805,7 @@ export default function PosTerminal({
                             </Alert>
                         </div>
 
-                        <ScrollArea className="h-[calc(100vh-25rem)] xl:h-[calc(100vh-21rem)]">
+                        <ScrollArea className="h-[calc(100vh-16rem)] xl:h-[calc(100vh-12rem)]">
                             <div className="grid gap-4 p-5 sm:grid-cols-2 2xl:grid-cols-3">
                                 {filteredProducts.length ? (
                                     filteredProducts.map((product) => {
