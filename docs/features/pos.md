@@ -60,8 +60,8 @@ Deliverable:
   Progres: sale membuat payment dan finance entry dalam transaction yang sama.
 - [x] Audit log untuk event penting: product created, stock adjusted, shift opened/closed, sale created.
   Progres: event-event inti tersebut sudah dicatat melalui `PosAuditLogger`.
-- [~] Permission dan menu sesuai role.
-  Progres: permission POS sudah didefinisikan dan pembatasan akses backend sudah dipakai; menu/UX role-based masih perlu audit akhir agar semua entry sidebar dan visibilitas benar-benar konsisten.
+- [x] Permission dan menu sesuai role.
+  Progres: permission POS sudah didefinisikan, role seed sudah terpasang, pembatasan backend route/action sudah aktif, dan menu sidebar utama POS sudah mengikuti permission user.
 
 Non-goal tahap 1:
 
@@ -74,7 +74,7 @@ Non-goal tahap 1:
 ### Tahap 2 - Operational Hardening
 
 - [~] Void/refund dengan approval administrator dan reason wajib.
-  Progres: struktur data sale sudah punya field `voided_by`, `voided_at`, `void_reason`, dan status `voided`; flow service/controller/UI approval belum dibuat.
+  Progres: void sale oleh administrator sudah ada lengkap dengan reason wajib, reversal stok, reversal finance, status refunded, dan audit log. Bagian refund terpisah di luar void belum dibuat.
 - [ ] Cash in/out drawer movement di luar penjualan.
   Progres: belum ada model/flow drawer movement khusus di luar payment sale.
 - [ ] Shift handover: kasir keluar, kasir masuk, admin approval untuk selisih cash.

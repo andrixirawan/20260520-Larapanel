@@ -228,6 +228,126 @@ class PosSaleService
         });
     }
 
+    public function void(User $actor, Sale $sale, string $reason): Sale
+    {
+        return DB::transaction(function () use ($actor, $sale, $reason): Sale {
+            /** @var Sale $lockedSale */
+            $lockedSale = Sale::query()
+                ->with(['items', 'payments', 'shift', 'cashier', 'voidedBy'])
+                ->whereKey($sale->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedSale->status === Sale::STATUS_VOIDED) {
+                throw ValidationException::withMessages([
+                    'sale' => __('This sale is already voided.'),
+                ]);
+            }
+
+            $variantIds = $lockedSale->items
+                ->pluck('product_variant_id')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            /** @var Collection<int, ProductVariant> $variants */
+            $variants = ProductVariant::query()
+                ->with('product')
+                ->whereIn('id', $variantIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            $stocks = InventoryStock::query()
+                ->whereIn('product_variant_id', $variantIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('product_variant_id');
+
+            foreach ($lockedSale->items as $item) {
+                /** @var ProductVariant|null $variant */
+                $variant = $variants->get($item->product_variant_id);
+
+                if (! $variant || ! $variant->track_inventory) {
+                    continue;
+                }
+
+                /** @var InventoryStock|null $stock */
+                $stock = $stocks->get($variant->id);
+
+                if (! $stock) {
+                    $stock = InventoryStock::create([
+                        'product_variant_id' => $variant->id,
+                        'quantity_on_hand' => 0,
+                        'quantity_reserved' => 0,
+                    ]);
+                }
+
+                $before = (float) $stock->quantity_on_hand;
+                $delta = round((float) $item->quantity, 3);
+                $after = round($before + $delta, 3);
+
+                $stock->update(['quantity_on_hand' => $after]);
+
+                InventoryMovement::create([
+                    'product_variant_id' => $variant->id,
+                    'actor_id' => $actor->id,
+                    'type' => InventoryMovement::TYPE_SALE_VOID,
+                    'quantity_before' => $before,
+                    'quantity_delta' => $delta,
+                    'quantity_after' => $after,
+                    'reference_type' => $lockedSale->getMorphClass(),
+                    'reference_id' => $lockedSale->id,
+                    'notes' => 'Void sale '.$lockedSale->invoice_number,
+                    'metadata' => ['reason' => $reason],
+                ]);
+            }
+
+            foreach ($lockedSale->payments as $payment) {
+                $payment->update([
+                    'status' => Payment::STATUS_REFUNDED,
+                    'metadata' => array_filter([
+                        ...((array) $payment->metadata),
+                        'void_reason' => $reason,
+                        'voided_at' => now()->toISOString(),
+                    ]),
+                ]);
+
+                FinanceEntry::create([
+                    'entry_date' => now()->toDateString(),
+                    'shift_id' => $lockedSale->shift_id,
+                    'source_type' => $payment->getMorphClass(),
+                    'source_id' => $payment->id,
+                    'type' => FinanceEntry::TYPE_SALE_VOID,
+                    'direction' => FinanceEntry::DIRECTION_DEBIT,
+                    'payment_method' => $payment->method,
+                    'amount' => $this->money($payment->amount),
+                    'created_by' => $actor->id,
+                    'notes' => 'Void sale '.$lockedSale->invoice_number.': '.$reason,
+                    'metadata' => ['sale_public_id' => $lockedSale->public_id],
+                ]);
+            }
+
+            $beforeSale = $lockedSale->toArray();
+
+            $lockedSale->update([
+                'status' => Sale::STATUS_VOIDED,
+                'payment_status' => Sale::PAYMENT_STATUS_REFUNDED,
+                'voided_by' => $actor->id,
+                'voided_at' => now(),
+                'void_reason' => $reason,
+            ]);
+
+            $this->auditLogger->log($actor, 'pos.sale.voided', $lockedSale, $beforeSale, [
+                'invoice_number' => $lockedSale->invoice_number,
+                'void_reason' => $reason,
+            ]);
+
+            return $lockedSale->refresh()->load(['items', 'payments', 'cashier', 'shift', 'voidedBy']);
+        });
+    }
+
     /**
      * @return Collection<int, array{product_variant_id: int, quantity: float}>
      */

@@ -28,7 +28,11 @@ class FinanceEntry extends Model
 
     public const TYPE_SALE_INCOME = 'sale_income';
 
+    public const TYPE_SALE_VOID = 'sale_void';
+
     public const DIRECTION_CREDIT = 'credit';
+
+    public const DIRECTION_DEBIT = 'debit';
 
     protected $table = 'pos_finance_entries';
 

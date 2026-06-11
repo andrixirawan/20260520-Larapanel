@@ -41,6 +41,8 @@ class Sale extends Model
 
     public const PAYMENT_STATUS_PENDING = 'pending';
 
+    public const PAYMENT_STATUS_REFUNDED = 'refunded';
+
     protected $table = 'pos_sales';
 
     protected function casts(): array
@@ -76,5 +78,10 @@ class Sale extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'sale_id');
+    }
+
+    public function voidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by');
     }
 }

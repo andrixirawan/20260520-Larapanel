@@ -87,6 +87,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:'.AccessControl::PERMISSION_POS_SALES_CREATE)
         ->name('pos.sales.store');
 
+    Route::patch('pos/sales/{sale}/void', [PosSaleController::class, 'void'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SALES_VOID)
+        ->name('pos.sales.void');
+
     Route::get('pos/sales/{sale}', [PosSaleController::class, 'show'])
         ->middleware('can:'.AccessControl::PERMISSION_POS_SALES_VIEW)
         ->name('pos.sales.show');

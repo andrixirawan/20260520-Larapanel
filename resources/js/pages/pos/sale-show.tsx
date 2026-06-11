@@ -1,17 +1,33 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
     BadgeCheck,
+    Loader2,
     ReceiptText,
     ShoppingBasket,
+    ShieldAlert,
+    Undo2,
     WalletCards,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ClientDataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogMedia,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import type { Auth } from '@/types';
 import { formatPosDateTime, posCurrency } from './utils';
 
 type SaleDetail = {
@@ -24,7 +40,10 @@ type SaleDetail = {
     paid_total: number;
     change_total: number;
     created_at: string;
+    voided_at?: string | null;
+    void_reason?: string | null;
     cashier?: { name: string };
+    voided_by?: { name: string } | null;
     shift?: { public_id: string; opened_at: string | null };
     items: Array<{
         public_id: string;
@@ -46,6 +65,11 @@ type SaleDetail = {
 };
 
 export default function PosSaleShow({ sale }: { sale: SaleDetail }) {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const canVoidSale = auth.permissions['pos.sales.void'];
+    const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+    const [voidReason, setVoidReason] = useState('');
+    const [isVoiding, setIsVoiding] = useState(false);
     const itemColumns = useMemo<ColumnDef<SaleDetail['items'][number]>[]>(
         () => [
             {
@@ -91,6 +115,22 @@ export default function PosSaleShow({ sale }: { sale: SaleDetail }) {
         [],
     );
 
+    const voidSale = () => {
+        router.patch(
+            `/pos/sales/${sale.public_id}/void`,
+            { reason: voidReason },
+            {
+                preserveScroll: true,
+                onStart: () => setIsVoiding(true),
+                onSuccess: () => {
+                    setVoidDialogOpen(false);
+                    setVoidReason('');
+                },
+                onFinish: () => setIsVoiding(false),
+            },
+        );
+    };
+
     return (
         <>
             <Head title={sale.invoice_number} />
@@ -121,6 +161,15 @@ export default function PosSaleShow({ sale }: { sale: SaleDetail }) {
                         >
                             <Link href="/pos/sales">Back to sales</Link>
                         </Button>
+                        {canVoidSale && sale.status !== 'voided' ? (
+                            <Button
+                                variant="destructive"
+                                onClick={() => setVoidDialogOpen(true)}
+                            >
+                                <Undo2 />
+                                Void sale
+                            </Button>
+                        ) : null}
                     </CardContent>
                 </Card>
 
@@ -281,11 +330,71 @@ export default function PosSaleShow({ sale }: { sale: SaleDetail }) {
                                         {posCurrency.format(Number(sale.total))}
                                     </span>
                                 </div>
+                                {sale.voided_at ? (
+                                    <>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">
+                                                Voided at
+                                            </span>
+                                            <span>
+                                                {formatPosDateTime(sale.voided_at)}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">
+                                                Voided by
+                                            </span>
+                                            <span>{sale.voided_by?.name ?? '-'}</span>
+                                        </div>
+                                        <div className="rounded-xl border bg-muted/30 p-3">
+                                            <div className="text-xs text-muted-foreground">
+                                                Void reason
+                                            </div>
+                                            <div className="mt-1 font-medium">
+                                                {sale.void_reason ?? '-'}
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : null}
                             </CardContent>
                         </Card>
                     </div>
                 </div>
             </div>
+
+            <AlertDialog open={voidDialogOpen} onOpenChange={setVoidDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogMedia>
+                            <ShieldAlert />
+                        </AlertDialogMedia>
+                        <AlertDialogTitle>Void sale</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Aksi ini hanya untuk administrator. Stok akan dikembalikan,
+                            finance entry reversal akan dibuat, dan reason wajib disimpan.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Textarea
+                        value={voidReason}
+                        onChange={(event) => setVoidReason(event.target.value)}
+                        placeholder="Reason for void"
+                    />
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={voidSale}
+                            disabled={!voidReason.trim() || isVoiding}
+                        >
+                            {isVoiding ? (
+                                <Loader2 className="animate-spin" />
+                            ) : (
+                                <Undo2 />
+                            )}
+                            Confirm void
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }

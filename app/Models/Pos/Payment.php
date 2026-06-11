@@ -34,6 +34,8 @@ class Payment extends Model
 
     public const STATUS_PAID = 'paid';
 
+    public const STATUS_REFUNDED = 'refunded';
+
     protected $table = 'pos_payments';
 
     protected function casts(): array

@@ -28,6 +28,8 @@ class InventoryMovement extends Model
 
     public const TYPE_SALE = 'sale';
 
+    public const TYPE_SALE_VOID = 'sale_void';
+
     protected $table = 'pos_inventory_movements';
 
     protected function casts(): array

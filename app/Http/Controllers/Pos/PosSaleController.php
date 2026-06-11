@@ -98,8 +98,24 @@ class PosSaleController extends Controller
         );
 
         return Inertia::render('pos/sale-show', [
-            'sale' => $this->saleData($sale->load(['cashier:id,name', 'shift:id,public_id,opened_at', 'items', 'payments'])),
+            'sale' => $this->saleData($sale->load(['cashier:id,name', 'shift:id,public_id,opened_at', 'items', 'payments', 'voidedBy:id,name'])),
         ]);
+    }
+
+    public function void(Request $request, Sale $sale): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        $this->saleService->void($request->user(), $sale, $validated['reason']);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Sale :invoice voided.', ['invoice' => $sale->invoice_number]),
+        ]);
+
+        return back();
     }
 
     /**
@@ -146,6 +162,11 @@ class PosSaleController extends Controller
             'customer_name' => $sale->customer_name,
             'notes' => $sale->notes,
             'completed_at' => $sale->completed_at?->toISOString(),
+            'voided_at' => $sale->voided_at?->toISOString(),
+            'void_reason' => $sale->void_reason,
+            'voided_by' => $sale->voidedBy ? [
+                'name' => $sale->voidedBy->name,
+            ] : null,
             'created_at' => $sale->created_at?->toISOString(),
             'items' => $sale->items->map(fn ($item): array => [
                 'public_id' => $item->public_id,
