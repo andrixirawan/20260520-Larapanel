@@ -7,12 +7,17 @@ use App\Models\Pos\Payment;
 use App\Models\Pos\Product;
 use App\Models\Pos\Sale;
 use App\Models\Pos\Shift;
+use App\Services\Pos\PosShiftService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PosTerminalController extends Controller
 {
+    public function __construct(
+        private readonly PosShiftService $shiftService,
+    ) {}
+
     public function __invoke(Request $request): Response
     {
         $user = $request->user();
@@ -62,9 +67,10 @@ class PosTerminalController extends Controller
             'products' => $products,
             'openShift' => $openShift ? [
                 'public_id' => $openShift->public_id,
-                'opening_cash' => (float) $openShift->opening_cash,
+                ...$this->shiftService->cashSnapshot($openShift),
                 'opened_at' => $openShift->opened_at?->toISOString(),
             ] : null,
+            'openingGuide' => $openShift ? null : $this->shiftService->openingGuide($user),
             'paymentMethods' => Payment::methodOptions(),
             'recentSales' => $recentSales,
         ]);

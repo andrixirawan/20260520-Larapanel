@@ -22,7 +22,15 @@ export type PosProductRow = PosProduct & {
 export type PosShift = {
     public_id: string;
     opening_cash: number;
+    cash_sales_total: number;
+    expected_cash: number;
     opened_at: string | null;
+};
+
+export type PosOpeningGuide = {
+    recommended_opening_cash: number;
+    source_shift_public_id: string;
+    source_closed_at: string | null;
 };
 
 export type PosSaleListItem = {

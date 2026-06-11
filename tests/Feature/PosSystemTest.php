@@ -27,6 +27,7 @@ test('cashier can open POS terminal but cannot manage products', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('pos/terminal')
             ->where('openShift', null)
+            ->where('openingGuide', null)
         );
 
     $this->actingAs($cashier)
@@ -36,6 +37,82 @@ test('cashier can open POS terminal but cannot manage products', function () {
             'price' => 15000,
         ])
         ->assertForbidden();
+});
+
+test('terminal shows live cash expectation for open shift and recommendation for next shift opening', function () {
+    $cashier = User::factory()->create(['name' => 'Cashier Guide']);
+    $cashier->assignRole(AccessControl::ROLE_CASHIER);
+    $variant = createPosProductVariant(stock: 5, price: 10000);
+
+    $this->actingAs($cashier)->post(route('pos.shifts.store'), [
+        'opening_cash' => 50000,
+    ]);
+
+    $this->actingAs($cashier)->post(route('pos.sales.store'), [
+        'items' => [
+            ['product_variant_public_id' => $variant->public_id, 'quantity' => 2],
+        ],
+        'payment_method' => Payment::METHOD_CASH,
+        'received_amount' => 25000,
+    ]);
+
+    $shift = Shift::query()->where('cashier_id', $cashier->id)->firstOrFail();
+
+    $this->actingAs($cashier)
+        ->get(route('pos.terminal'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('pos/terminal')
+            ->where('openShift.public_id', $shift->public_id)
+            ->where('openShift.opening_cash', 50000)
+            ->where('openShift.cash_sales_total', 20000)
+            ->where('openShift.expected_cash', 70000)
+            ->where('openingGuide', null)
+        );
+
+    $this->actingAs($cashier)
+        ->patch(route('pos.shifts.close', $shift), [
+            'counted_cash' => 71000,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($cashier)
+        ->get(route('pos.terminal'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('pos/terminal')
+            ->where('openShift', null)
+            ->where('openingGuide.recommended_opening_cash', 71000)
+            ->where('openingGuide.source_shift_public_id', $shift->public_id)
+        );
+});
+
+test('sales index includes cashier traceability in invoice list', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $cashier = User::factory()->create(['name' => 'Cashier Visible']);
+    $cashier->assignRole(AccessControl::ROLE_CASHIER);
+    $variant = createPosProductVariant(stock: 5, price: 12000);
+
+    $this->actingAs($cashier)->post(route('pos.shifts.store'), [
+        'opening_cash' => 10000,
+    ]);
+
+    $this->actingAs($cashier)->post(route('pos.sales.store'), [
+        'items' => [
+            ['product_variant_public_id' => $variant->public_id, 'quantity' => 1],
+        ],
+        'payment_method' => Payment::METHOD_CASH,
+        'received_amount' => 12000,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('pos.sales.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('pos/sales')
+            ->where('sales.data.0.cashier', 'Cashier Visible')
+        );
 });
 
 test('administrator can create a POS product with opening stock', function () {

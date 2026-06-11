@@ -72,7 +72,12 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { PosProduct, PosShift, RecentSale } from './types';
+import type {
+    PosOpeningGuide,
+    PosProduct,
+    PosShift,
+    RecentSale,
+} from './types';
 import { usePosTerminalStore } from './use-pos-terminal-store';
 import { firstErrorMessage, formatPosDateTime, posCurrency } from './utils';
 
@@ -253,11 +258,13 @@ function CartContent({
 export default function PosTerminal({
     products,
     openShift,
+    openingGuide,
     paymentMethods,
     recentSales,
 }: {
     products: PosProduct[];
     openShift: PosShift | null;
+    openingGuide: PosOpeningGuide | null;
     paymentMethods: Record<string, string>;
     recentSales: RecentSale[];
 }) {
@@ -305,6 +312,11 @@ export default function PosTerminal({
     const availableCount = products.filter(
         (product) => !product.track_inventory || product.stock > 0,
     ).length;
+    const expectedCash = openShift?.expected_cash ?? 0;
+    const countedCashValue = Number(countedCash || 0);
+    const closingDifference = countedCash
+        ? countedCashValue - expectedCash
+        : null;
 
     const openShiftAction = () => {
         const loadingToast = toast.loading('Opening shift...');
@@ -599,6 +611,49 @@ export default function PosTerminal({
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
+                            {openingGuide ? (
+                                <div className="rounded-2xl border bg-muted/40 p-4 text-sm">
+                                    <div className="font-medium">
+                                        Saldo referensi dari shift sebelumnya
+                                    </div>
+                                    <div className="mt-1 text-muted-foreground">
+                                        Shift{' '}
+                                        {openingGuide.source_shift_public_id.slice(
+                                            -8,
+                                        )}{' '}
+                                        ditutup{' '}
+                                        {formatPosDateTime(
+                                            openingGuide.source_closed_at,
+                                        )}
+                                        .
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between gap-3">
+                                        <span className="text-muted-foreground">
+                                            Recommended opening cash
+                                        </span>
+                                        <span className="text-base font-semibold">
+                                            {posCurrency.format(
+                                                openingGuide.recommended_opening_cash,
+                                            )}
+                                        </span>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="mt-3"
+                                        onClick={() =>
+                                            setOpeningCash(
+                                                String(
+                                                    openingGuide.recommended_opening_cash,
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        Use recommendation
+                                    </Button>
+                                </div>
+                            ) : null}
                             <Input
                                 type="number"
                                 min="0"
@@ -714,6 +769,20 @@ export default function PosTerminal({
                                 icon: Wallet,
                                 label: 'Opening cash',
                                 value: posCurrency.format(openShift.opening_cash),
+                            },
+                            {
+                                icon: Banknote,
+                                label: 'Cash sales',
+                                value: posCurrency.format(
+                                    openShift.cash_sales_total,
+                                ),
+                            },
+                            {
+                                icon: Wallet,
+                                label: 'Expected cash',
+                                value: posCurrency.format(
+                                    openShift.expected_cash,
+                                ),
                             },
                             {
                                 icon: PackageSearch,
@@ -949,6 +1018,62 @@ export default function PosTerminal({
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
+                            <div className="rounded-2xl border bg-muted/40 p-4 text-sm">
+                                <div className="font-medium">
+                                    Cash reconciliation snapshot
+                                </div>
+                                <div className="mt-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">
+                                            Opening cash
+                                        </span>
+                                        <span>
+                                            {posCurrency.format(
+                                                openShift.opening_cash,
+                                            )}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">
+                                            Cash sales in shift
+                                        </span>
+                                        <span>
+                                            {posCurrency.format(
+                                                openShift.cash_sales_total,
+                                            )}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between font-semibold">
+                                        <span>Expected cash</span>
+                                        <span>
+                                            {posCurrency.format(
+                                                openShift.expected_cash,
+                                            )}
+                                        </span>
+                                    </div>
+                                    {closingDifference !== null ? (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">
+                                                Preview difference
+                                            </span>
+                                            <span
+                                                className={cn(
+                                                    'font-medium',
+                                                    closingDifference === 0
+                                                        ? 'text-emerald-600'
+                                                        : closingDifference > 0
+                                                          ? 'text-sky-600'
+                                                          : 'text-destructive',
+                                                )}
+                                            >
+                                                {posCurrency.format(
+                                                    closingDifference,
+                                                )}
+                                            </span>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
                             <Input
                                 type="number"
                                 min="0"

@@ -59,13 +59,8 @@ class PosShiftService
                 ]);
             }
 
-            $cashSales = Payment::query()
-                ->where('method', Payment::METHOD_CASH)
-                ->where('status', Payment::STATUS_PAID)
-                ->whereHas('sale', fn ($query) => $query->where('shift_id', $lockedShift->id))
-                ->sum('amount');
-
-            $expectedCash = round((float) $lockedShift->opening_cash + (float) $cashSales, 2);
+            $snapshot = $this->cashSnapshot($lockedShift);
+            $expectedCash = $snapshot['expected_cash'];
             $counted = round((float) $countedCash, 2);
             $difference = round($counted - $expectedCash, 2);
 
@@ -89,6 +84,50 @@ class PosShiftService
 
             return $lockedShift->refresh();
         });
+    }
+
+    /**
+     * @return array{opening_cash: float, cash_sales_total: float, expected_cash: float}
+     */
+    public function cashSnapshot(Shift $shift): array
+    {
+        $cashSales = Payment::query()
+            ->where('method', Payment::METHOD_CASH)
+            ->where('status', Payment::STATUS_PAID)
+            ->whereHas('sale', fn ($query) => $query->where('shift_id', $shift->id))
+            ->sum('amount');
+
+        $openingCash = round((float) $shift->opening_cash, 2);
+        $cashSalesTotal = round((float) $cashSales, 2);
+
+        return [
+            'opening_cash' => $openingCash,
+            'cash_sales_total' => $cashSalesTotal,
+            'expected_cash' => round($openingCash + $cashSalesTotal, 2),
+        ];
+    }
+
+    /**
+     * @return array{recommended_opening_cash: float, source_shift_public_id: string, source_closed_at: string|null}|null
+     */
+    public function openingGuide(User $actor): ?array
+    {
+        $lastClosedShift = Shift::query()
+            ->where('cashier_id', $actor->id)
+            ->where('status', Shift::STATUS_CLOSED)
+            ->whereNotNull('counted_cash')
+            ->latest('closed_at')
+            ->first();
+
+        if (! $lastClosedShift) {
+            return null;
+        }
+
+        return [
+            'recommended_opening_cash' => round((float) $lastClosedShift->counted_cash, 2),
+            'source_shift_public_id' => $lastClosedShift->public_id,
+            'source_closed_at' => $lastClosedShift->closed_at?->toISOString(),
+        ];
     }
 
     private function money(float|int|string $value): string

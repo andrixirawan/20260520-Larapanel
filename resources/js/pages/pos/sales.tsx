@@ -39,6 +39,9 @@ export default function PosSales({
                         <div className="text-xs text-muted-foreground">
                             {formatPosDateTime(row.original.created_at)}
                         </div>
+                        <div className="text-xs text-muted-foreground">
+                            Cashier: {row.original.cashier ?? '-'}
+                        </div>
                     </>
                 ),
             },

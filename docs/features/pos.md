@@ -87,14 +87,16 @@ Non-goal tahap 1:
 
 1. Cashier login.
 2. Sistem cek apakah user punya shift `open`.
-3. Jika belum ada, cashier wajib input `opening_cash`.
-4. Sistem membuat shift dengan `cashier_id`, `opened_by`, `opened_at`, `opening_cash`.
-5. Semua transaksi cash harus terikat ke shift open.
+3. Jika belum ada, sistem menampilkan referensi saldo kas terakhir yang sudah direkonsiliasi sebagai baseline anti-fraud.
+4. Cashier wajib menghitung fisik uang di laci lalu input `opening_cash`.
+5. Sistem membuat shift dengan `cashier_id`, `opened_by`, `opened_at`, `opening_cash`.
+6. Semua transaksi cash harus terikat ke shift open.
 
 Kontrol anti-fraud:
 
 - Satu cashier hanya boleh punya satu open shift.
 - Opening cash tidak bisa diedit langsung setelah shift dibuat.
+- Sistem menampilkan saldo referensi dari shift tertutup terakhir agar kasir tahu nominal yang seharusnya tersedia sebelum input manual.
 - Koreksi shift harus lewat flow adjustment/approval di tahap berikutnya.
 - Event dicatat di audit log.
 
@@ -117,8 +119,8 @@ Kontrol anti-fraud:
 
 ### Close Shift
 
-1. Cashier input counted cash.
-2. Sistem hitung expected cash = opening cash + total cash sale di shift.
+1. Sistem menampilkan snapshot kas berjalan: `opening_cash + total cash sale = expected cash`.
+2. Cashier hitung fisik uang di laci lalu input `counted_cash`.
 3. Sistem simpan counted cash dan difference.
 4. Shift menjadi `closed`.
 
@@ -126,6 +128,7 @@ Kontrol anti-fraud:
 
 - Counted cash wajib.
 - Difference tersimpan permanen.
+- Expected cash terlihat sebelum submit agar kasir bisa recount jika angka fisik tidak cocok.
 - Admin dapat melihat semua shift dan selisih.
 - Tahap berikutnya menambahkan approval untuk selisih melewati threshold.
 
