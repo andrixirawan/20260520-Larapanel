@@ -9,6 +9,7 @@ use App\Models\Pos\ProductVariant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class PosInventoryService
@@ -23,9 +24,11 @@ class PosInventoryService
     public function createProduct(User $actor, array $data): Product
     {
         return DB::transaction(function () use ($actor, $data): Product {
+            $sku = $this->resolveSku($data);
+
             $product = Product::create([
                 'name' => $data['name'],
-                'sku' => $data['sku'] ?? null,
+                'sku' => $sku,
                 'status' => $data['status'] ?? Product::STATUS_ACTIVE,
                 'description' => $data['description'] ?? null,
                 'created_by' => $actor->id,
@@ -35,7 +38,7 @@ class PosInventoryService
             $variant = ProductVariant::create([
                 'product_id' => $product->id,
                 'name' => 'Default',
-                'sku' => $data['variant_sku'] ?? $data['sku'] ?? null,
+                'sku' => $data['variant_sku'] ?? $sku,
                 'barcode' => $data['barcode'] ?? null,
                 'price' => $this->money($data['price']),
                 'cost_price' => isset($data['cost_price']) ? $this->money($data['cost_price']) : null,
@@ -156,5 +159,42 @@ class PosInventoryService
     private function quantity(float|int|string $value): float
     {
         return round((float) $value, 3);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveSku(array $data): string
+    {
+        $providedSku = trim((string) ($data['sku'] ?? ''));
+        if ($providedSku !== '') {
+            return $providedSku;
+        }
+
+        $name = trim((string) ($data['name'] ?? ''));
+        $base = Str::upper(Str::slug(Str::limit($name, 24, ''), '-'));
+        $base = preg_replace('/[^A-Z0-9-]/', '', $base ?? '') ?: 'ITEM';
+        $base = trim($base, '-');
+        $prefix = 'POS-'.$base;
+
+        $lastMatchingSku = ProductVariant::query()
+            ->where('sku', 'like', $prefix.'-%')
+            ->orderByDesc('sku')
+            ->value('sku');
+
+        $nextNumber = 1;
+
+        if (is_string($lastMatchingSku) && preg_match('/-(\d{4})$/', $lastMatchingSku, $matches) === 1) {
+            $nextNumber = ((int) $matches[1]) + 1;
+        }
+
+        do {
+            $candidate = sprintf('%s-%04d', $prefix, $nextNumber);
+            $exists = Product::query()->where('sku', $candidate)->exists()
+                || ProductVariant::query()->where('sku', $candidate)->exists();
+            $nextNumber++;
+        } while ($exists);
+
+        return $candidate;
     }
 }

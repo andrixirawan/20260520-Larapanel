@@ -395,69 +395,95 @@ export default function PosProducts({
                         <DialogTitle>Create POS product</DialogTitle>
                         <DialogDescription>
                             Produk akan dibuat bersama default variant dan siap
-                            dipakai di terminal.
+                            dipakai di terminal. SKU boleh dikosongkan dan akan
+                            digenerate otomatis.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 md:grid-cols-2">
-                        <Input
-                            value={productForm.name}
-                            onChange={(event) =>
-                                setProductForm((state) => ({
-                                    ...state,
-                                    name: event.target.value,
-                                }))
-                            }
-                            placeholder="Product name"
-                        />
-                        <Input
-                            value={productForm.sku}
-                            onChange={(event) =>
-                                setProductForm((state) => ({
-                                    ...state,
-                                    sku: event.target.value,
-                                }))
-                            }
-                            placeholder="SKU"
-                        />
-                        <Input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
-                            value={productForm.price}
-                            onChange={(event) =>
-                                setProductForm((state) => ({
-                                    ...state,
-                                    price: event.target.value,
-                                }))
-                            }
-                            placeholder="Price"
-                        />
-                        <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={productForm.cost_price}
-                            onChange={(event) =>
-                                setProductForm((state) => ({
-                                    ...state,
-                                    cost_price: event.target.value,
-                                }))
-                            }
-                            placeholder="Cost price"
-                        />
-                        <Input
-                            type="number"
-                            min="0"
-                            step="0.001"
-                            value={productForm.initial_quantity}
-                            onChange={(event) =>
-                                setProductForm((state) => ({
-                                    ...state,
-                                    initial_quantity: event.target.value,
-                                }))
-                            }
-                            placeholder="Initial stock"
-                        />
+                        <div className="space-y-2">
+                            <Input
+                                value={productForm.name}
+                                onChange={(event) =>
+                                    setProductForm((state) => ({
+                                        ...state,
+                                        name: event.target.value,
+                                    }))
+                                }
+                                placeholder="Product name"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Nama produk yang muncul di terminal cashier dan laporan.
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Input
+                                value={productForm.sku}
+                                onChange={(event) =>
+                                    setProductForm((state) => ({
+                                        ...state,
+                                        sku: event.target.value,
+                                    }))
+                                }
+                                placeholder="SKU, optional"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Kosongkan jika ingin sistem generate SKU otomatis.
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Input
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                value={productForm.price}
+                                onChange={(event) =>
+                                    setProductForm((state) => ({
+                                        ...state,
+                                        price: event.target.value,
+                                    }))
+                                }
+                                placeholder="Selling price"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Harga jual ke customer.
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={productForm.cost_price}
+                                onChange={(event) =>
+                                    setProductForm((state) => ({
+                                        ...state,
+                                        cost_price: event.target.value,
+                                    }))
+                                }
+                                placeholder="Cost price / HPP"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                HPP atau modal per unit. Dipakai untuk histori dan analisis margin.
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.001"
+                                value={productForm.initial_quantity}
+                                onChange={(event) =>
+                                    setProductForm((state) => ({
+                                        ...state,
+                                        initial_quantity: event.target.value,
+                                    }))
+                                }
+                                placeholder="Initial stock"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Stok awal saat produk dibuat. Bisa `0` jika stok diisi nanti.
+                            </p>
+                        </div>
                         <div className="grid gap-3 rounded-xl border p-4">
                             <label className="flex items-center gap-3 text-sm font-medium">
                                 <Checkbox
@@ -471,6 +497,10 @@ export default function PosProducts({
                                 />
                                 Track inventory
                             </label>
+                            <p className="text-xs text-muted-foreground">
+                                Aktifkan jika stok produk harus dihitung dan berkurang saat sale.
+                                Nonaktifkan untuk jasa atau item yang tidak perlu stok.
+                            </p>
                             <label className="flex items-center gap-3 text-sm font-medium">
                                 <Checkbox
                                     checked={productForm.allow_backorder}
@@ -483,18 +513,28 @@ export default function PosProducts({
                                 />
                                 Allow backorder
                             </label>
+                            <p className="text-xs text-muted-foreground">
+                                Jika aktif, transaksi tetap boleh jalan meski stok minus.
+                                Biasanya untuk pre-order atau barang menyusul.
+                            </p>
                         </div>
                         <div className="md:col-span-2">
-                            <Textarea
-                                value={productForm.description}
-                                onChange={(event) =>
-                                    setProductForm((state) => ({
-                                        ...state,
-                                        description: event.target.value,
-                                    }))
-                                }
-                                placeholder="Description"
-                            />
+                            <div className="space-y-2">
+                                <Textarea
+                                    value={productForm.description}
+                                    onChange={(event) =>
+                                        setProductForm((state) => ({
+                                            ...state,
+                                            description: event.target.value,
+                                        }))
+                                    }
+                                    placeholder="Description, optional"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Isi dengan catatan internal singkat seperti ukuran, merek, isi paket,
+                                    atau pembeda produk. Boleh dikosongkan jika nama produk sudah cukup jelas.
+                                </p>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
