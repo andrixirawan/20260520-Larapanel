@@ -9,7 +9,6 @@ use App\Models\Pos\ProductVariant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class PosInventoryService
@@ -171,30 +170,51 @@ class PosInventoryService
             return $providedSku;
         }
 
-        $name = trim((string) ($data['name'] ?? ''));
-        $base = Str::upper(Str::slug(Str::limit($name, 24, ''), '-'));
-        $base = preg_replace('/[^A-Z0-9-]/', '', $base ?? '') ?: 'ITEM';
-        $base = trim($base, '-');
-        $prefix = 'POS-'.$base;
-
-        $lastMatchingSku = ProductVariant::query()
-            ->where('sku', 'like', $prefix.'-%')
-            ->orderByDesc('sku')
-            ->value('sku');
-
-        $nextNumber = 1;
-
-        if (is_string($lastMatchingSku) && preg_match('/-(\d{4})$/', $lastMatchingSku, $matches) === 1) {
-            $nextNumber = ((int) $matches[1]) + 1;
-        }
+        $prefix = 'PRD-';
+        $nextNumber = $this->nextGeneratedSkuNumber($prefix);
 
         do {
-            $candidate = sprintf('%s-%04d', $prefix, $nextNumber);
+            $candidate = sprintf('%s%06d', $prefix, $nextNumber);
             $exists = Product::query()->where('sku', $candidate)->exists()
                 || ProductVariant::query()->where('sku', $candidate)->exists();
             $nextNumber++;
         } while ($exists);
 
         return $candidate;
+    }
+
+    private function nextGeneratedSkuNumber(string $prefix): int
+    {
+        $productSku = Product::query()
+            ->where('sku', 'like', $prefix.'%')
+            ->orderByDesc('sku')
+            ->value('sku');
+
+        $variantSku = ProductVariant::query()
+            ->where('sku', 'like', $prefix.'%')
+            ->orderByDesc('sku')
+            ->value('sku');
+
+        $lastNumber = max(
+            $this->extractGeneratedSkuNumber($productSku, $prefix),
+            $this->extractGeneratedSkuNumber($variantSku, $prefix),
+        );
+
+        return $lastNumber + 1;
+    }
+
+    private function extractGeneratedSkuNumber(mixed $sku, string $prefix): int
+    {
+        if (! is_string($sku)) {
+            return 0;
+        }
+
+        $pattern = '/^'.preg_quote($prefix, '/').'(\d{6})$/';
+
+        if (preg_match($pattern, $sku, $matches) !== 1) {
+            return 0;
+        }
+
+        return (int) $matches[1];
     }
 }

@@ -396,7 +396,7 @@ export default function PosProducts({
                         <DialogDescription>
                             Produk akan dibuat bersama default variant dan siap
                             dipakai di terminal. SKU boleh dikosongkan dan akan
-                            digenerate otomatis.
+                            digenerate otomatis dengan format `PRD-000001`.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 md:grid-cols-2">
@@ -427,7 +427,8 @@ export default function PosProducts({
                                 placeholder="SKU, optional"
                             />
                             <p className="text-xs text-muted-foreground">
-                                Kosongkan jika ingin sistem generate SKU otomatis.
+                                Kosongkan jika ingin sistem generate SKU otomatis
+                                dengan format `PRD-000001`.
                             </p>
                         </div>
                         <div className="space-y-2">
