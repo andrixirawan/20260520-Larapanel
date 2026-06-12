@@ -77,14 +77,14 @@ Non-goal tahap 1:
   Progres: void sale oleh administrator sudah ada lengkap dengan reason wajib, reversal stok, reversal finance, status refunded, dan audit log. Bagian refund terpisah di luar void belum dibuat.
 - [x] Cash in/out drawer movement di luar penjualan.
   Progres: cash in/out sudah bisa dicatat pada shift aktif dari terminal, masuk ke finance ledger, mempengaruhi expected cash, tampil di close shift snapshot, dan tercatat di audit log.
-- [ ] Shift handover: kasir keluar, kasir masuk, admin approval untuk selisih cash.
-  Progres: belum ada handover antar cashier atau approval threshold selisih cash.
-- [ ] Receipt/invoice printable.
-  Progres: ada halaman detail sale, tetapi belum ada layout print/thermal/printable action.
+- [x] Shift handover: kasir keluar, kasir masuk, admin approval untuk selisih cash.
+  Progres: handover antar cashier sudah ada dari terminal, counted cash direkonsiliasi saat serah terima, dan jika selisih melewati threshold maka shift masuk status pending sampai admin approve dari halaman shifts sebelum shift pengganti dibuka.
+- [x] Receipt/invoice printable.
+  Progres: halaman detail sale sudah punya action print dengan layout printable untuk invoice/receipt dari browser. Layout thermal native khusus printer dedicated belum dibuat.
 - [~] Stock opname dan adjustment batch.
-  Progres: adjustment stok manual per variant sudah ada; batch stock opname dan workflow count belum ada.
-- [ ] Low stock alert.
-  Progres: stok tersedia di data model dan UI, tetapi alert/rule threshold belum ada.
+  Progres: adjustment stok manual per variant tetap ada, dan batch stock opname dasar sudah ada dari halaman products untuk menyimpan counted quantity banyak item sekaligus. Workflow count yang lebih kaya seperti session opname, freeze period, atau blind count belum ada.
+- [x] Low stock alert.
+  Progres: variant sekarang punya `low_stock_threshold`, alert tampil di terminal dan halaman products, dan item low stock diberi indikator visual berdasarkan threshold tersebut.
 - [~] Sales report per shift, cashier, product, payment method.
   Progres: list shifts, sales, finance, dan filter dasar sudah ada; report agregat khusus per dimensi belum lengkap.
 - [ ] Export CSV/PDF.
