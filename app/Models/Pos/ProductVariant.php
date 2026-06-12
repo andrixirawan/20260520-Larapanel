@@ -20,6 +20,7 @@ use App\Models\Pos\SaleItem;
     'cost_price',
     'track_inventory',
     'allow_backorder',
+    'low_stock_threshold',
     'is_default',
     'metadata',
 ])]
@@ -36,6 +37,7 @@ class ProductVariant extends Model
             'cost_price' => 'decimal:2',
             'track_inventory' => 'boolean',
             'allow_backorder' => 'boolean',
+            'low_stock_threshold' => 'decimal:3',
             'is_default' => 'boolean',
             'metadata' => 'array',
         ];

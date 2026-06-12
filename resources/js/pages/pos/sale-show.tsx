@@ -3,6 +3,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import {
     BadgeCheck,
     Loader2,
+    Printer,
     ReceiptText,
     ShoppingBasket,
     ShieldAlert,
@@ -135,7 +136,7 @@ export default function PosSaleShow({ sale }: { sale: SaleDetail }) {
         <>
             <Head title={sale.invoice_number} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4">
+            <div className="pos-receipt-print flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4">
                 <Card className="relative overflow-hidden border-none bg-[linear-gradient(135deg,rgba(15,23,42,1),rgba(6,95,70,0.94),rgba(8,145,178,0.86))] text-white shadow-xl">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.15),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.12),transparent_28%)]" />
                     <CardContent className="relative flex flex-col gap-5 p-6 md:p-7 lg:flex-row lg:items-end lg:justify-between">
@@ -155,14 +156,23 @@ export default function PosSaleShow({ sale }: { sale: SaleDetail }) {
                         </div>
 
                         <Button
+                            className="no-print"
+                            variant="secondary"
+                            onClick={() => window.print()}
+                        >
+                            <Printer />
+                            Print receipt
+                        </Button>
+                        <Button
                             asChild
                             variant="outline"
-                            className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                            className="no-print border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
                         >
                             <Link href="/pos/sales">Back to sales</Link>
                         </Button>
                         {canVoidSale && sale.status !== 'voided' ? (
                             <Button
+                                className="no-print"
                                 variant="destructive"
                                 onClick={() => setVoidDialogOpen(true)}
                             >
@@ -395,6 +405,31 @@ export default function PosSaleShow({ sale }: { sale: SaleDetail }) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <style>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+
+                    .pos-receipt-print,
+                    .pos-receipt-print * {
+                        visibility: visible;
+                    }
+
+                    .pos-receipt-print {
+                        position: absolute;
+                        inset: 0;
+                        width: 100%;
+                        padding: 0;
+                        color: #111827;
+                        background: white;
+                    }
+
+                    .no-print {
+                        display: none !important;
+                    }
+                }
+            `}</style>
         </>
     );
 }

@@ -10,12 +10,16 @@ export type PosProduct = {
     price: number;
     track_inventory: boolean;
     stock: number;
+    low_stock_threshold: number;
+    is_low_stock: boolean;
 };
 
 export type PosProductRow = PosProduct & {
     status: string;
     cost_price: number | null;
     allow_backorder: boolean;
+    low_stock_threshold: number;
+    is_low_stock: boolean;
     description: string | null;
     has_sales: boolean;
     created_at: string | null;
@@ -30,6 +34,7 @@ export type PosShift = {
     net_cash_movement_total: number;
     expected_cash: number;
     opened_at: string | null;
+    handover_to_cashier?: string | null;
 };
 
 export type PosOpeningGuide = {
@@ -55,4 +60,9 @@ export type RecentSale = {
     total: number;
     payment_method: string | null;
     created_at: string | null;
+};
+
+export type PosCashierOption = {
+    public_id: string;
+    name: string;
 };

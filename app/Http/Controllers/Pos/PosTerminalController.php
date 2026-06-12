@@ -9,6 +9,8 @@ use App\Models\Pos\Product;
 use App\Models\Pos\Sale;
 use App\Models\Pos\Shift;
 use App\Services\Pos\PosShiftService;
+use App\Support\AccessControl;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -40,6 +42,10 @@ class PosTerminalController extends Controller
                     'price' => (float) ($variant?->price ?? 0),
                     'track_inventory' => (bool) $variant?->track_inventory,
                     'stock' => (float) ($variant?->stock?->quantity_on_hand ?? 0),
+                    'low_stock_threshold' => (float) ($variant?->low_stock_threshold ?? 0),
+                    'is_low_stock' => (bool) $variant?->track_inventory
+                        && (float) ($variant?->low_stock_threshold ?? 0) > 0
+                        && (float) ($variant?->stock?->quantity_on_hand ?? 0) <= (float) ($variant?->low_stock_threshold ?? 0),
                 ];
             })
             ->values();
@@ -81,6 +87,26 @@ class PosTerminalController extends Controller
                 ->values()
             : [];
 
+        $availableCashiers = User::query()
+            ->role([
+                AccessControl::ROLE_CASHIER,
+                AccessControl::ROLE_ADMINISTRATOR,
+                AccessControl::ROLE_SUPER_ADMIN,
+            ])
+            ->whereKeyNot($user->id)
+            ->orderBy('name')
+            ->get(['id', 'public_id', 'name'])
+            ->map(fn (User $cashier): array => [
+                'public_id' => $cashier->public_id,
+                'name' => $cashier->name,
+            ])
+            ->values();
+
+        $lowStockProducts = $products
+            ->filter(fn (array $product): bool => $product['is_low_stock'])
+            ->take(5)
+            ->values();
+
         return Inertia::render('pos/terminal', [
             'products' => $products,
             'openShift' => $openShift ? [
@@ -92,6 +118,9 @@ class PosTerminalController extends Controller
             'paymentMethods' => Payment::methodOptions(),
             'recentSales' => $recentSales,
             'recentCashMovements' => $recentCashMovements,
+            'availableCashiers' => $availableCashiers,
+            'handoverDifferenceThreshold' => $this->shiftService->handoverDifferenceThreshold(),
+            'lowStockProducts' => $lowStockProducts,
         ]);
     }
 }

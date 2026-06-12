@@ -4,6 +4,7 @@ import {
     ArrowUpRight,
     Banknote,
     Boxes,
+    ClipboardList,
     Clock3,
     CreditCard,
     Loader2,
@@ -73,6 +74,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type {
+    PosCashierOption,
     PosOpeningGuide,
     PosProduct,
     PosShift,
@@ -262,6 +264,9 @@ export default function PosTerminal({
     paymentMethods,
     recentSales,
     recentCashMovements,
+    availableCashiers,
+    handoverDifferenceThreshold,
+    lowStockProducts,
 }: {
     products: PosProduct[];
     openShift: PosShift | null;
@@ -275,6 +280,9 @@ export default function PosTerminal({
         notes: string | null;
         created_at: string | null;
     }>;
+    availableCashiers: PosCashierOption[];
+    handoverDifferenceThreshold: number;
+    lowStockProducts: PosProduct[];
 }) {
     const {
         cart,
@@ -304,11 +312,16 @@ export default function PosTerminal({
     const [cashMovementType, setCashMovementType] = useState('cash_in');
     const [cashMovementAmount, setCashMovementAmount] = useState('');
     const [cashMovementNotes, setCashMovementNotes] = useState('');
+    const [handoverDialogOpen, setHandoverDialogOpen] = useState(false);
+    const [handoverCashierPublicId, setHandoverCashierPublicId] = useState('');
+    const [handoverCountedCash, setHandoverCountedCash] = useState('');
+    const [handoverNotes, setHandoverNotes] = useState('');
     const [isOpeningShift, setIsOpeningShift] = useState(false);
     const [isClosingShift, setIsClosingShift] = useState(false);
     const [isSubmittingCashMovement, setIsSubmittingCashMovement] =
         useState(false);
     const [isSubmittingSale, setIsSubmittingSale] = useState(false);
+    const [isSubmittingHandover, setIsSubmittingHandover] = useState(false);
 
     const filteredProducts = products.filter((product) =>
         `${product.name} ${product.sku ?? ''}`
@@ -334,6 +347,13 @@ export default function PosTerminal({
     const closingDifference = countedCash
         ? countedCashValue - expectedCash
         : null;
+    const handoverCountedCashValue = Number(handoverCountedCash || 0);
+    const handoverDifference = handoverCountedCash
+        ? handoverCountedCashValue - expectedCash
+        : null;
+    const handoverNeedsApproval =
+        handoverDifference !== null &&
+        Math.abs(handoverDifference) > handoverDifferenceThreshold;
 
     const openShiftAction = () => {
         const loadingToast = toast.loading('Opening shift...');
@@ -462,6 +482,43 @@ export default function PosTerminal({
                 },
                 onFinish: () => {
                     setIsSubmittingSale(false);
+                    toast.dismiss(loadingToast);
+                },
+            },
+        );
+    };
+
+    const handoverShiftAction = () => {
+        if (!openShift) {
+            return;
+        }
+
+        const loadingToast = toast.loading('Submitting handover...');
+
+        router.post(
+            `/pos/shifts/${openShift.public_id}/handover`,
+            {
+                incoming_cashier_public_id: handoverCashierPublicId,
+                counted_cash: handoverCountedCash,
+                notes: handoverNotes,
+            },
+            {
+                preserveScroll: true,
+                onStart: () => setIsSubmittingHandover(true),
+                onError: (errors) =>
+                    toast.error(firstErrorMessage(errors), {
+                        id: loadingToast,
+                    }),
+                onSuccess: () => {
+                    setHandoverDialogOpen(false);
+                    setHandoverCashierPublicId('');
+                    setHandoverCountedCash('');
+                    setHandoverNotes('');
+                    clearCart();
+                    resetPayment();
+                },
+                onFinish: () => {
+                    setIsSubmittingHandover(false);
                     toast.dismiss(loadingToast);
                 },
             },
@@ -788,6 +845,9 @@ export default function PosTerminal({
                                     Ready {availableCount}/{products.length} products
                                 </div>
                                 <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                                    Low stock {lowStockProducts.length}
+                                </div>
+                                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
                                     Cart {posCurrency.format(subtotal)}
                                 </div>
                             </div>
@@ -800,6 +860,13 @@ export default function PosTerminal({
                             >
                                 <Wallet />
                                 Cash in/out
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setHandoverDialogOpen(true)}
+                            >
+                                <ArrowUpRight />
+                                Handover shift
                             </Button>
                             <Button
                                 variant="secondary"
@@ -873,6 +940,20 @@ export default function PosTerminal({
                                     ke cart jika inventory tracking aktif.
                                 </AlertDescription>
                             </Alert>
+                            {lowStockProducts.length ? (
+                                <Alert className="border-amber-200 bg-amber-50 text-amber-950">
+                                    <ClipboardList />
+                                    <AlertTitle>Low stock alert</AlertTitle>
+                                    <AlertDescription>
+                                        {lowStockProducts
+                                            .map(
+                                                (product) =>
+                                                    `${product.name} (${product.stock}/${product.low_stock_threshold})`,
+                                            )
+                                            .join(', ')}
+                                    </AlertDescription>
+                                </Alert>
+                            ) : null}
                         </div>
 
                         <ScrollArea className="h-[calc(100vh-16rem)] xl:h-[calc(100vh-12rem)]">
@@ -922,15 +1003,32 @@ export default function PosTerminal({
                                                                 'mt-1 text-sm font-medium',
                                                                 disabled &&
                                                                     'text-destructive',
+                                                                product.is_low_stock &&
+                                                                    !disabled &&
+                                                                    'text-amber-700',
                                                             )}
                                                         >
                                                             {product.track_inventory
                                                                 ? `${product.stock} ready`
                                                                 : 'Not tracked'}
                                                         </div>
+                                                        {product.is_low_stock ? (
+                                                            <div className="mt-1 text-xs text-amber-700">
+                                                                Threshold {product.low_stock_threshold}
+                                                            </div>
+                                                        ) : null}
                                                     </div>
-                                                    <div className="rounded-full bg-primary/8 px-3 py-1 text-xs font-medium text-primary">
-                                                        Add to cart
+                                                    <div
+                                                        className={cn(
+                                                            'rounded-full px-3 py-1 text-xs font-medium',
+                                                            product.is_low_stock
+                                                                ? 'bg-amber-100 text-amber-800'
+                                                                : 'bg-primary/8 text-primary',
+                                                        )}
+                                                    >
+                                                        {product.is_low_stock
+                                                            ? 'Low stock'
+                                                            : 'Add to cart'}
                                                     </div>
                                                 </div>
                                             </button>
@@ -1150,6 +1248,138 @@ export default function PosTerminal({
                                     <Clock3 />
                                 )}
                                 Close shift
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog
+                    open={handoverDialogOpen}
+                    onOpenChange={setHandoverDialogOpen}
+                >
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Handover shift</DialogTitle>
+                            <DialogDescription>
+                                Tutup tanggung jawab cashier saat ini dan
+                                pindahkan drawer ke cashier berikutnya.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            <div className="rounded-2xl border bg-muted/40 p-4 text-sm">
+                                <div className="font-medium">
+                                    Handover reconciliation
+                                </div>
+                                <div className="mt-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">
+                                            Expected cash
+                                        </span>
+                                        <span>
+                                            {posCurrency.format(expectedCash)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">
+                                            Approval threshold
+                                        </span>
+                                        <span>
+                                            {posCurrency.format(
+                                                handoverDifferenceThreshold,
+                                            )}
+                                        </span>
+                                    </div>
+                                    {handoverDifference !== null ? (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">
+                                                Difference preview
+                                            </span>
+                                            <span
+                                                className={cn(
+                                                    'font-medium',
+                                                    handoverNeedsApproval
+                                                        ? 'text-amber-700'
+                                                        : 'text-emerald-700',
+                                                )}
+                                            >
+                                                {posCurrency.format(
+                                                    handoverDifference,
+                                                )}
+                                            </span>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
+                            <Select
+                                value={handoverCashierPublicId}
+                                onValueChange={setHandoverCashierPublicId}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Incoming cashier" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableCashiers.map((cashier) => (
+                                        <SelectItem
+                                            key={cashier.public_id}
+                                            value={cashier.public_id}
+                                        >
+                                            {cashier.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={handoverCountedCash}
+                                onChange={(event) =>
+                                    setHandoverCountedCash(event.target.value)
+                                }
+                                placeholder="Counted cash for handover"
+                            />
+                            <Textarea
+                                value={handoverNotes}
+                                onChange={(event) =>
+                                    setHandoverNotes(event.target.value)
+                                }
+                                placeholder="Handover notes, optional"
+                            />
+                            {handoverNeedsApproval ? (
+                                <Alert className="border-amber-200 bg-amber-50 text-amber-950">
+                                    <ShieldCheck />
+                                    <AlertTitle>
+                                        Admin approval required
+                                    </AlertTitle>
+                                    <AlertDescription>
+                                        Selisih kas melewati threshold. Shift
+                                        pengganti baru akan dibuka setelah admin
+                                        approve dari halaman shift register.
+                                    </AlertDescription>
+                                </Alert>
+                            ) : null}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setHandoverDialogOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handoverShiftAction}
+                                disabled={
+                                    !handoverCashierPublicId ||
+                                    !handoverCountedCash ||
+                                    isSubmittingHandover
+                                }
+                            >
+                                {isSubmittingHandover ? (
+                                    <Loader2 className="animate-spin" />
+                                ) : (
+                                    <ArrowUpRight />
+                                )}
+                                Submit handover
                             </Button>
                         </DialogFooter>
                     </DialogContent>

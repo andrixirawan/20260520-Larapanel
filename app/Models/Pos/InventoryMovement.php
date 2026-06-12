@@ -26,6 +26,8 @@ class InventoryMovement extends Model
 
     public const TYPE_ADJUSTMENT = 'adjustment';
 
+    public const TYPE_STOCK_OPNAME = 'stock_opname';
+
     public const TYPE_SALE = 'sale';
 
     public const TYPE_SALE_VOID = 'sale_void';

@@ -12,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class PosShiftService
 {
+    public const HANDOVER_DIFFERENCE_APPROVAL_THRESHOLD = 10000.00;
+
     public function __construct(
         private readonly PosAuditLogger $auditLogger,
     ) {}
@@ -85,6 +87,160 @@ class PosShiftService
             ]);
 
             return $lockedShift->refresh();
+        });
+    }
+
+    /**
+     * @return array{shift: Shift, next_shift: Shift|null, requires_approval: bool}
+     */
+    public function handover(
+        User $actor,
+        Shift $shift,
+        User $incomingCashier,
+        float|int|string $countedCash,
+        ?string $notes = null,
+    ): array {
+        return DB::transaction(function () use ($actor, $shift, $incomingCashier, $countedCash, $notes): array {
+            $lockedShift = Shift::query()
+                ->whereKey($shift->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedShift->status !== Shift::STATUS_OPEN) {
+                throw ValidationException::withMessages([
+                    'shift' => __('This shift is not available for handover.'),
+                ]);
+            }
+
+            if ($lockedShift->cashier_id === $incomingCashier->id) {
+                throw ValidationException::withMessages([
+                    'incoming_cashier_public_id' => __('Select another cashier for handover.'),
+                ]);
+            }
+
+            $incomingHasOpenShift = Shift::query()
+                ->where('cashier_id', $incomingCashier->id)
+                ->where('status', Shift::STATUS_OPEN)
+                ->exists();
+
+            if ($incomingHasOpenShift) {
+                throw ValidationException::withMessages([
+                    'incoming_cashier_public_id' => __('The incoming cashier already has an open shift.'),
+                ]);
+            }
+
+            $snapshot = $this->cashSnapshot($lockedShift);
+            $expectedCash = $snapshot['expected_cash'];
+            $counted = round((float) $countedCash, 2);
+            $difference = round($counted - $expectedCash, 2);
+            $requiresApproval = $this->requiresHandoverApproval($difference);
+            $before = $lockedShift->toArray();
+
+            $lockedShift->update([
+                'closed_by' => $actor->id,
+                'handover_to_cashier_id' => $incomingCashier->id,
+                'handover_requested_by' => $actor->id,
+                'status' => $requiresApproval ? Shift::STATUS_HANDOVER_PENDING : Shift::STATUS_CLOSED,
+                'expected_cash' => $this->money($expectedCash),
+                'counted_cash' => $this->money($counted),
+                'cash_difference' => $this->money($difference),
+                'closed_at' => now(),
+                'handover_requested_at' => now(),
+                'notes' => $notes ?? $lockedShift->notes,
+                'handover_notes' => $notes,
+            ]);
+
+            $nextShift = null;
+
+            if (! $requiresApproval) {
+                $nextShift = $this->createHandoverShift(
+                    incomingCashier: $incomingCashier,
+                    openedBy: $actor,
+                    openingCash: $counted,
+                    sourceShift: $lockedShift,
+                );
+            }
+
+            $this->auditLogger->log(
+                $actor,
+                $requiresApproval ? 'pos.shift.handover_requested' : 'pos.shift.handover_completed',
+                $lockedShift,
+                $before,
+                [
+                    'handover_to_cashier_id' => $incomingCashier->id,
+                    'expected_cash' => $lockedShift->expected_cash,
+                    'counted_cash' => $lockedShift->counted_cash,
+                    'cash_difference' => $lockedShift->cash_difference,
+                    'approval_threshold' => self::HANDOVER_DIFFERENCE_APPROVAL_THRESHOLD,
+                    'next_shift_id' => $nextShift?->id,
+                ],
+            );
+
+            return [
+                'shift' => $lockedShift->refresh(),
+                'next_shift' => $nextShift?->refresh(),
+                'requires_approval' => $requiresApproval,
+            ];
+        });
+    }
+
+    /**
+     * @return array{shift: Shift, next_shift: Shift}
+     */
+    public function approveHandover(User $actor, Shift $shift, ?string $notes = null): array
+    {
+        return DB::transaction(function () use ($actor, $shift, $notes): array {
+            $lockedShift = Shift::query()
+                ->whereKey($shift->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedShift->status !== Shift::STATUS_HANDOVER_PENDING) {
+                throw ValidationException::withMessages([
+                    'shift' => __('This shift does not need handover approval.'),
+                ]);
+            }
+
+            $incomingCashier = User::query()->findOrFail($lockedShift->handover_to_cashier_id);
+
+            $incomingHasOpenShift = Shift::query()
+                ->where('cashier_id', $incomingCashier->id)
+                ->where('status', Shift::STATUS_OPEN)
+                ->exists();
+
+            if ($incomingHasOpenShift) {
+                throw ValidationException::withMessages([
+                    'shift' => __('The incoming cashier already has an open shift.'),
+                ]);
+            }
+
+            $nextShift = $this->createHandoverShift(
+                incomingCashier: $incomingCashier,
+                openedBy: $actor,
+                openingCash: (float) $lockedShift->counted_cash,
+                sourceShift: $lockedShift,
+            );
+
+            $before = $lockedShift->toArray();
+
+            $lockedShift->update([
+                'status' => Shift::STATUS_CLOSED,
+                'handover_approved_by' => $actor->id,
+                'handover_approved_at' => now(),
+                'handover_notes' => $notes
+                    ? trim(($lockedShift->handover_notes ? $lockedShift->handover_notes."\n\n" : '').'Approval: '.$notes)
+                    : $lockedShift->handover_notes,
+            ]);
+
+            $this->auditLogger->log($actor, 'pos.shift.handover_approved', $lockedShift, $before, [
+                'handover_to_cashier_id' => $incomingCashier->id,
+                'next_shift_id' => $nextShift->id,
+            ]);
+
+            return [
+                'shift' => $lockedShift->refresh(),
+                'next_shift' => $nextShift->refresh(),
+            ];
         });
     }
 
@@ -209,6 +365,46 @@ class PosShiftService
             'source_shift_public_id' => $lastClosedShift->public_id,
             'source_closed_at' => $lastClosedShift->closed_at?->toISOString(),
         ];
+    }
+
+    public function handoverDifferenceThreshold(): float
+    {
+        return self::HANDOVER_DIFFERENCE_APPROVAL_THRESHOLD;
+    }
+
+    private function requiresHandoverApproval(float $difference): bool
+    {
+        return abs($difference) > self::HANDOVER_DIFFERENCE_APPROVAL_THRESHOLD;
+    }
+
+    private function createHandoverShift(
+        User $incomingCashier,
+        User $openedBy,
+        float $openingCash,
+        Shift $sourceShift,
+    ): Shift {
+        $shift = Shift::create([
+            'cashier_id' => $incomingCashier->id,
+            'opened_by' => $openedBy->id,
+            'status' => Shift::STATUS_OPEN,
+            'opening_cash' => $this->money($openingCash),
+            'opened_at' => now(),
+            'notes' => __('Handover from shift :shift.', [
+                'shift' => $sourceShift->public_id,
+            ]),
+            'metadata' => [
+                'handover_from_shift_id' => $sourceShift->id,
+                'handover_from_shift_public_id' => $sourceShift->public_id,
+            ],
+        ]);
+
+        $this->auditLogger->log($openedBy, 'pos.shift.opened_from_handover', $shift, null, [
+            'opening_cash' => $shift->opening_cash,
+            'handover_from_shift_id' => $sourceShift->id,
+            'handover_to_cashier_id' => $incomingCashier->id,
+        ]);
+
+        return $shift;
     }
 
     private function money(float|int|string $value): string

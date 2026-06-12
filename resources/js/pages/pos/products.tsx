@@ -5,6 +5,7 @@ import {
     Boxes,
     ClipboardList,
     Loader2,
+    Siren,
     PackagePlus,
     Pencil,
     Trash2,
@@ -49,6 +50,7 @@ type ProductFormState = {
     price: string;
     cost_price: string;
     initial_quantity: string;
+    low_stock_threshold: string;
     description: string;
     track_inventory: boolean;
     allow_backorder: boolean;
@@ -61,6 +63,7 @@ const initialProductForm: ProductFormState = {
     price: '',
     cost_price: '',
     initial_quantity: '',
+    low_stock_threshold: '0',
     description: '',
     track_inventory: true,
     allow_backorder: false,
@@ -79,6 +82,7 @@ export default function PosProducts({
     const canManageInventory = auth.permissions['pos.inventory.manage'];
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+    const [stockOpnameDialogOpen, setStockOpnameDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [productForm, setProductForm] =
@@ -88,6 +92,10 @@ export default function PosProducts({
         quantity_delta: '',
         notes: '',
     });
+    const [stockOpnameNotes, setStockOpnameNotes] = useState('');
+    const [stockOpnameCounts, setStockOpnameCounts] = useState<Record<string, string>>(
+        {},
+    );
     const [selectedProduct, setSelectedProduct] = useState<PosProductRow | null>(
         null,
     );
@@ -95,6 +103,7 @@ export default function PosProducts({
     const [isAdjusting, setIsAdjusting] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isSubmittingStockOpname, setIsSubmittingStockOpname] = useState(false);
     const columns = useMemo<ColumnDef<PosProductRow>[]>(
         () => [
             {
@@ -125,6 +134,9 @@ export default function PosProducts({
                                 ? '-'
                                 : posCurrency.format(row.original.cost_price)}
                         </div>
+                        <div className="text-xs text-muted-foreground">
+                            Threshold: {row.original.low_stock_threshold}
+                        </div>
                     </>
                 ),
             },
@@ -138,6 +150,8 @@ export default function PosProducts({
                             variant={
                                 row.original.stock <= 0
                                     ? 'destructive'
+                                    : row.original.is_low_stock
+                                      ? 'secondary'
                                     : 'outline'
                             }
                         >
@@ -202,6 +216,9 @@ export default function PosProducts({
                                                     ? ''
                                                     : String(row.original.cost_price),
                                             initial_quantity: '',
+                                            low_stock_threshold: String(
+                                                row.original.low_stock_threshold,
+                                            ),
                                             description: row.original.description ?? '',
                                             track_inventory: row.original.track_inventory,
                                             allow_backorder:
@@ -245,6 +262,9 @@ export default function PosProducts({
     );
     const activeCount = products.data.filter(
         (product) => product.status === 'active',
+    ).length;
+    const lowStockCount = products.data.filter(
+        (product) => product.is_low_stock,
     ).length;
 
     const createProduct = () => {
@@ -365,6 +385,43 @@ export default function PosProducts({
         });
     };
 
+    const submitStockOpname = () => {
+        const items = products.data
+            .filter((product) => product.product_variant_public_id)
+            .map((product) => ({
+                product_variant_public_id: product.product_variant_public_id,
+                counted_quantity:
+                    stockOpnameCounts[product.public_id] ?? String(product.stock),
+            }));
+
+        const loadingToast = toast.loading('Saving stock opname...');
+
+        router.post(
+            '/pos/stock-opname',
+            {
+                items,
+                notes: stockOpnameNotes,
+            },
+            {
+                preserveScroll: true,
+                onStart: () => setIsSubmittingStockOpname(true),
+                onError: (errors) =>
+                    toast.error(firstErrorMessage(errors), {
+                        id: loadingToast,
+                    }),
+                onSuccess: () => {
+                    setStockOpnameDialogOpen(false);
+                    setStockOpnameNotes('');
+                    setStockOpnameCounts({});
+                },
+                onFinish: () => {
+                    setIsSubmittingStockOpname(false);
+                    toast.dismiss(loadingToast);
+                },
+            },
+        );
+    };
+
     return (
         <>
             <Head title="POS Products" />
@@ -402,6 +459,25 @@ export default function PosProducts({
                                         New product
                                     </Button>
                                 )}
+                                {canManageInventory && (
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => {
+                                            setStockOpnameCounts(
+                                                Object.fromEntries(
+                                                    products.data.map((product) => [
+                                                        product.public_id,
+                                                        String(product.stock),
+                                                    ]),
+                                                ),
+                                            );
+                                            setStockOpnameDialogOpen(true);
+                                        }}
+                                    >
+                                        <ClipboardList />
+                                        Batch stock opname
+                                    </Button>
+                                )}
                                 <Button
                                     asChild
                                     variant="outline"
@@ -417,7 +493,7 @@ export default function PosProducts({
                     </CardContent>
                 </Card>
 
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
                     {[
                         {
                             icon: ClipboardList,
@@ -433,6 +509,11 @@ export default function PosProducts({
                             icon: ArrowUpDown,
                             label: 'Tracked stock visible',
                             value: `${totalVisibleStock}`,
+                        },
+                        {
+                            icon: Siren,
+                            label: 'Low stock on page',
+                            value: `${lowStockCount}`,
                         },
                     ].map((item) => (
                         <Card key={item.label}>
@@ -473,6 +554,22 @@ export default function PosProducts({
                         ke inactive agar hilang dari terminal.
                     </AlertDescription>
                 </Alert>
+
+                {lowStockCount ? (
+                    <Alert className="border-amber-200 bg-amber-50 text-amber-950">
+                        <Siren />
+                        <AlertTitle>Low stock alert</AlertTitle>
+                        <AlertDescription>
+                            {products.data
+                                .filter((product) => product.is_low_stock)
+                                .map(
+                                    (product) =>
+                                        `${product.name} (${product.stock}/${product.low_stock_threshold})`,
+                                )
+                                .join(', ')}
+                        </AlertDescription>
+                    </Alert>
+                ) : null}
 
                 <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
                     <Card>
@@ -616,6 +713,24 @@ export default function PosProducts({
                                 Stok awal saat produk dibuat. Bisa `0` jika stok diisi nanti.
                             </p>
                         </div>
+                        <div className="space-y-2">
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.001"
+                                value={productForm.low_stock_threshold}
+                                onChange={(event) =>
+                                    setProductForm((state) => ({
+                                        ...state,
+                                        low_stock_threshold: event.target.value,
+                                    }))
+                                }
+                                placeholder="Low stock threshold"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Alert akan aktif jika stok {'<='} threshold ini. Isi `0` untuk nonaktif.
+                            </p>
+                        </div>
                         <div className="grid gap-3 rounded-xl border p-4">
                             <label className="flex items-center gap-3 text-sm font-medium">
                                 <Checkbox
@@ -753,6 +868,21 @@ export default function PosProducts({
                                     }))
                                 }
                                 placeholder="Cost price / HPP"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.001"
+                                value={editForm.low_stock_threshold}
+                                onChange={(event) =>
+                                    setEditForm((state) => ({
+                                        ...state,
+                                        low_stock_threshold: event.target.value,
+                                    }))
+                                }
+                                placeholder="Low stock threshold"
                             />
                         </div>
                         <div className="space-y-2">
@@ -945,6 +1075,89 @@ export default function PosProducts({
                                 <ArrowUpDown />
                             )}
                             Apply adjustment
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={stockOpnameDialogOpen}
+                onOpenChange={setStockOpnameDialogOpen}
+            >
+                <DialogContent className="sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Batch stock opname</DialogTitle>
+                        <DialogDescription>
+                            Masukkan jumlah fisik aktual untuk produk pada halaman ini.
+                            Sistem akan membuat movement hanya untuk item yang berubah.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                            {products.data
+                                .filter(
+                                    (product) =>
+                                        product.track_inventory &&
+                                        product.product_variant_public_id,
+                                )
+                                .map((product) => (
+                                    <div
+                                        key={product.public_id}
+                                        className="grid gap-3 rounded-xl border p-4 md:grid-cols-[minmax(0,1fr)_180px]"
+                                    >
+                                        <div>
+                                            <div className="font-medium">
+                                                {product.name}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {product.sku ?? 'No SKU'} • Current {product.stock}
+                                            </div>
+                                        </div>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.001"
+                                            value={
+                                                stockOpnameCounts[product.public_id] ??
+                                                String(product.stock)
+                                            }
+                                            onChange={(event) =>
+                                                setStockOpnameCounts((state) => ({
+                                                    ...state,
+                                                    [product.public_id]:
+                                                        event.target.value,
+                                                }))
+                                            }
+                                            placeholder="Counted quantity"
+                                        />
+                                    </div>
+                                ))}
+                        </div>
+                        <Textarea
+                            value={stockOpnameNotes}
+                            onChange={(event) =>
+                                setStockOpnameNotes(event.target.value)
+                            }
+                            placeholder="Catatan stock opname, optional"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setStockOpnameDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={submitStockOpname}
+                            disabled={isSubmittingStockOpname}
+                        >
+                            {isSubmittingStockOpname ? (
+                                <Loader2 className="animate-spin" />
+                            ) : (
+                                <ClipboardList />
+                            )}
+                            Save stock opname
                         </Button>
                     </DialogFooter>
                 </DialogContent>

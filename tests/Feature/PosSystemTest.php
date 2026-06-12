@@ -246,6 +246,106 @@ test('cashier can close own shift with cash reconciliation', function () {
         ->and((float) $shift->cash_difference)->toBe(0.0);
 });
 
+test('cashier can handover shift to another cashier when difference is within threshold', function () {
+    $cashier = User::factory()->create(['name' => 'Cashier One']);
+    $cashier->assignRole(AccessControl::ROLE_CASHIER);
+    $incomingCashier = User::factory()->create(['name' => 'Cashier Two']);
+    $incomingCashier->assignRole(AccessControl::ROLE_CASHIER);
+    $variant = createPosProductVariant(stock: 5, price: 10000);
+
+    $this->actingAs($cashier)->post(route('pos.shifts.store'), [
+        'opening_cash' => 50000,
+    ]);
+
+    $this->actingAs($cashier)->post(route('pos.sales.store'), [
+        'items' => [
+            ['product_variant_public_id' => $variant->public_id, 'quantity' => 1],
+        ],
+        'payment_method' => Payment::METHOD_CASH,
+        'received_amount' => 10000,
+    ]);
+
+    $shift = Shift::query()->where('cashier_id', $cashier->id)->firstOrFail();
+
+    $this->actingAs($cashier)
+        ->post(route('pos.shifts.handover', $shift), [
+            'incoming_cashier_public_id' => $incomingCashier->public_id,
+            'counted_cash' => 60000,
+            'notes' => 'Drawer handover complete.',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $shift->refresh();
+    $nextShift = Shift::query()
+        ->where('cashier_id', $incomingCashier->id)
+        ->where('status', Shift::STATUS_OPEN)
+        ->first();
+
+    expect($shift->status)->toBe(Shift::STATUS_CLOSED)
+        ->and($shift->handover_to_cashier_id)->toBe($incomingCashier->id)
+        ->and($nextShift)->not->toBeNull()
+        ->and((float) $nextShift->opening_cash)->toBe(60000.0);
+});
+
+test('handover above threshold waits for administrator approval before opening replacement shift', function () {
+    $cashier = User::factory()->create(['name' => 'Cashier One']);
+    $cashier->assignRole(AccessControl::ROLE_CASHIER);
+    $incomingCashier = User::factory()->create(['name' => 'Cashier Two']);
+    $incomingCashier->assignRole(AccessControl::ROLE_CASHIER);
+    $admin = User::factory()->create();
+    $admin->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $variant = createPosProductVariant(stock: 5, price: 10000);
+
+    $this->actingAs($cashier)->post(route('pos.shifts.store'), [
+        'opening_cash' => 50000,
+    ]);
+
+    $this->actingAs($cashier)->post(route('pos.sales.store'), [
+        'items' => [
+            ['product_variant_public_id' => $variant->public_id, 'quantity' => 1],
+        ],
+        'payment_method' => Payment::METHOD_CASH,
+        'received_amount' => 10000,
+    ]);
+
+    $shift = Shift::query()->where('cashier_id', $cashier->id)->firstOrFail();
+
+    $this->actingAs($cashier)
+        ->post(route('pos.shifts.handover', $shift), [
+            'incoming_cashier_public_id' => $incomingCashier->public_id,
+            'counted_cash' => 80000,
+            'notes' => 'Difference requires review.',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $shift->refresh();
+
+    expect($shift->status)->toBe(Shift::STATUS_HANDOVER_PENDING)
+        ->and((float) $shift->cash_difference)->toBe(20000.0);
+
+    $this->assertDatabaseMissing('pos_shifts', [
+        'cashier_id' => $incomingCashier->id,
+        'status' => Shift::STATUS_OPEN,
+    ]);
+
+    $this->actingAs($admin)
+        ->patch(route('pos.shifts.handover-approval', $shift), [
+            'notes' => 'Approved after recount.',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $shift->refresh();
+    $nextShift = Shift::query()
+        ->where('cashier_id', $incomingCashier->id)
+        ->where('status', Shift::STATUS_OPEN)
+        ->first();
+
+    expect($shift->status)->toBe(Shift::STATUS_CLOSED)
+        ->and($shift->handover_approved_by)->toBe($admin->id)
+        ->and($nextShift)->not->toBeNull()
+        ->and((float) $nextShift->opening_cash)->toBe(80000.0);
+});
+
 test('dummy qris payment completes with provider reference for future gateway flow', function () {
     $cashier = User::factory()->create();
     $cashier->assignRole(AccessControl::ROLE_CASHIER);
@@ -291,6 +391,53 @@ test('administrator can view shift and finance screens while cashier cannot view
     $this->actingAs($cashier)
         ->get(route('pos.finance.index'))
         ->assertForbidden();
+});
+
+test('administrator can run batch stock opname and see low stock alert data', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+
+    $this->actingAs($admin)
+        ->post(route('pos.products.store'), [
+            'name' => 'Beans',
+            'sku' => 'BNS-01',
+            'price' => 95000,
+            'cost_price' => 60000,
+            'initial_quantity' => 2,
+            'low_stock_threshold' => 5,
+            'track_inventory' => true,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $variant = ProductVariant::query()->where('sku', 'BNS-01')->firstOrFail();
+
+    $this->actingAs($admin)
+        ->get(route('pos.products.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('pos/products')
+            ->where('products.data.0.low_stock_threshold', 5)
+            ->where('products.data.0.is_low_stock', true)
+        );
+
+    $this->actingAs($admin)
+        ->post(route('pos.stock-opname.store'), [
+            'items' => [
+                [
+                    'product_variant_public_id' => $variant->public_id,
+                    'counted_quantity' => 7,
+                ],
+            ],
+            'notes' => 'Weekly stock opname',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect((float) $variant->stock()->firstOrFail()->quantity_on_hand)->toBe(7.0);
+
+    $this->assertDatabaseHas('pos_inventory_movements', [
+        'product_variant_id' => $variant->id,
+        'type' => InventoryMovement::TYPE_STOCK_OPNAME,
+    ]);
 });
 
 function createPosProductVariant(float $stock, float $price): ProductVariant

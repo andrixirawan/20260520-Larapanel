@@ -13,6 +13,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'cashier_id',
     'opened_by',
     'closed_by',
+    'handover_to_cashier_id',
+    'handover_requested_by',
+    'handover_approved_by',
     'status',
     'opening_cash',
     'expected_cash',
@@ -20,7 +23,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'cash_difference',
     'opened_at',
     'closed_at',
+    'handover_requested_at',
+    'handover_approved_at',
     'notes',
+    'handover_notes',
     'metadata',
 ])]
 class Shift extends Model
@@ -28,6 +34,8 @@ class Shift extends Model
     use HasPublicId;
 
     public const STATUS_OPEN = 'open';
+
+    public const STATUS_HANDOVER_PENDING = 'handover_pending';
 
     public const STATUS_CLOSED = 'closed';
 
@@ -42,6 +50,8 @@ class Shift extends Model
             'cash_difference' => 'decimal:2',
             'opened_at' => 'datetime',
             'closed_at' => 'datetime',
+            'handover_requested_at' => 'datetime',
+            'handover_approved_at' => 'datetime',
             'metadata' => 'array',
         ];
     }
@@ -59,6 +69,21 @@ class Shift extends Model
     public function closedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'closed_by');
+    }
+
+    public function handoverToCashier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'handover_to_cashier_id');
+    }
+
+    public function handoverRequestedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'handover_requested_by');
+    }
+
+    public function handoverApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'handover_approved_by');
     }
 
     public function sales(): HasMany

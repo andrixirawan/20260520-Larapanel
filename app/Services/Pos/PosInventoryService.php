@@ -43,6 +43,7 @@ class PosInventoryService
                 'cost_price' => isset($data['cost_price']) ? $this->money($data['cost_price']) : null,
                 'track_inventory' => (bool) ($data['track_inventory'] ?? true),
                 'allow_backorder' => (bool) ($data['allow_backorder'] ?? false),
+                'low_stock_threshold' => $this->quantity($data['low_stock_threshold'] ?? 0),
                 'is_default' => true,
             ]);
 
@@ -103,6 +104,75 @@ class PosInventoryService
     }
 
     /**
+     * @param  array<int, array{product_variant_id: int, counted_quantity: float|int|string}>  $items
+     * @return array{adjusted: int, unchanged: int}
+     */
+    public function batchStockOpname(User $actor, array $items, ?string $notes = null): array
+    {
+        return DB::transaction(function () use ($actor, $items, $notes): array {
+            $adjusted = 0;
+            $unchanged = 0;
+            $variants = ProductVariant::query()
+                ->with(['product', 'stock'])
+                ->whereIn('id', collect($items)->pluck('product_variant_id')->all())
+                ->get()
+                ->keyBy('id');
+
+            foreach ($items as $item) {
+                $variant = $variants->get($item['product_variant_id']);
+
+                if (! $variant) {
+                    continue;
+                }
+
+                $stock = InventoryStock::query()
+                    ->where('product_variant_id', $variant->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $stock) {
+                    $stock = InventoryStock::create([
+                        'product_variant_id' => $variant->id,
+                        'quantity_on_hand' => 0,
+                        'quantity_reserved' => 0,
+                    ]);
+                }
+
+                $countedQuantity = $this->quantity($item['counted_quantity']);
+                $currentQuantity = round((float) $stock->quantity_on_hand, 3);
+                $delta = round($countedQuantity - $currentQuantity, 3);
+
+                if ($delta === 0.0) {
+                    $unchanged++;
+                    continue;
+                }
+
+                $movement = $this->moveStock(
+                    actor: $actor,
+                    variant: $variant,
+                    delta: $delta,
+                    type: InventoryMovement::TYPE_STOCK_OPNAME,
+                    notes: $notes,
+                );
+
+                $this->auditLogger->log($actor, 'pos.inventory.stock_opname_recorded', $variant, null, [
+                    'product_variant_id' => $variant->id,
+                    'quantity_before' => $movement->quantity_before,
+                    'counted_quantity' => $countedQuantity,
+                    'quantity_after' => $movement->quantity_after,
+                ]);
+
+                $adjusted++;
+            }
+
+            return [
+                'adjusted' => $adjusted,
+                'unchanged' => $unchanged,
+            ];
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public function updateProduct(User $actor, Product $product, array $data): Product
@@ -142,6 +212,7 @@ class PosInventoryService
                     : null,
                 'track_inventory' => (bool) ($data['track_inventory'] ?? true),
                 'allow_backorder' => (bool) ($data['allow_backorder'] ?? false),
+                'low_stock_threshold' => $this->quantity($data['low_stock_threshold'] ?? 0),
             ]);
 
             $this->auditLogger->log($actor, 'pos.product.updated', $product, [

@@ -63,7 +63,11 @@ class PosProductController extends Controller
                     'cost_price' => $variant?->cost_price ? (float) $variant->cost_price : null,
                     'track_inventory' => (bool) $variant?->track_inventory,
                     'allow_backorder' => (bool) $variant?->allow_backorder,
+                    'low_stock_threshold' => (float) ($variant?->low_stock_threshold ?? 0),
                     'stock' => (float) ($variant?->stock?->quantity_on_hand ?? 0),
+                    'is_low_stock' => (bool) $variant?->track_inventory
+                        && (float) ($variant?->low_stock_threshold ?? 0) > 0
+                        && (float) ($variant?->stock?->quantity_on_hand ?? 0) <= (float) ($variant?->low_stock_threshold ?? 0),
                     'description' => $product->description,
                     'has_sales' => $hasSales,
                     'created_at' => $product->created_at?->toISOString(),
@@ -98,6 +102,7 @@ class PosProductController extends Controller
             'initial_quantity' => ['nullable', 'numeric', 'min:0'],
             'track_inventory' => ['nullable', 'boolean'],
             'allow_backorder' => ['nullable', 'boolean'],
+            'low_stock_threshold' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
         ]);
 
@@ -144,6 +149,7 @@ class PosProductController extends Controller
             'cost_price' => ['nullable', 'numeric', 'min:0'],
             'track_inventory' => ['nullable', 'boolean'],
             'allow_backorder' => ['nullable', 'boolean'],
+            'low_stock_threshold' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
             'status' => ['required', 'string', Rule::in([Product::STATUS_ACTIVE, Product::STATUS_INACTIVE])],
         ]);
@@ -160,6 +166,38 @@ class PosProductController extends Controller
         $this->inventoryService->deleteProduct($request->user(), $product);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product deleted.')]);
+
+        return back();
+    }
+
+    public function stockOpname(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_variant_public_id' => ['required', 'string', 'exists:pos_product_variants,public_id'],
+            'items.*.counted_quantity' => ['required', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $variantIds = ProductVariant::query()
+            ->whereIn('public_id', collect($validated['items'])->pluck('product_variant_public_id')->all())
+            ->pluck('id', 'public_id');
+
+        $result = $this->inventoryService->batchStockOpname(
+            $request->user(),
+            collect($validated['items'])
+                ->map(fn (array $item): array => [
+                    'product_variant_id' => $variantIds[$item['product_variant_public_id']],
+                    'counted_quantity' => $item['counted_quantity'],
+                ])
+                ->all(),
+            $validated['notes'] ?? null,
+        );
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Stock opname saved. Adjusted: :adjusted, unchanged: :unchanged.', $result),
+        ]);
 
         return back();
     }

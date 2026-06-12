@@ -63,6 +63,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:'.AccessControl::PERMISSION_POS_SHIFTS_CLOSE)
         ->name('pos.shifts.cash-movements.store');
 
+    Route::post('pos/shifts/{shift}/handover', [PosShiftController::class, 'handover'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SHIFTS_CLOSE)
+        ->name('pos.shifts.handover');
+
+    Route::patch('pos/shifts/{shift}/handover-approval', [PosShiftController::class, 'approveHandover'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_SHIFTS_MANAGE)
+        ->name('pos.shifts.handover-approval');
+
     Route::get('pos/products', [PosProductController::class, 'index'])
         ->middleware('can:'.AccessControl::PERMISSION_POS_PRODUCTS_VIEW)
         ->name('pos.products.index');
@@ -82,6 +90,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('pos/product-variants/{variant}/stock-adjustments', [PosProductController::class, 'adjustStock'])
         ->middleware('can:'.AccessControl::PERMISSION_POS_INVENTORY_MANAGE)
         ->name('pos.product-variants.stock-adjustments.store');
+
+    Route::post('pos/stock-opname', [PosProductController::class, 'stockOpname'])
+        ->middleware('can:'.AccessControl::PERMISSION_POS_INVENTORY_MANAGE)
+        ->name('pos.stock-opname.store');
 
     Route::get('pos/sales', [PosSaleController::class, 'index'])
         ->middleware('can:'.AccessControl::PERMISSION_POS_SALES_VIEW)
