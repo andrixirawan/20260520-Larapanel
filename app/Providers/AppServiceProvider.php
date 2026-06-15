@@ -8,6 +8,7 @@ use App\Support\AccessControl;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -30,9 +31,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->registerFeatureMigrationPaths();
         $this->configureAuthActivityNotifications();
         $this->configureAuthorization();
         $this->configureDefaults();
+    }
+
+    protected function registerFeatureMigrationPaths(): void
+    {
+        $featureMigrationPaths = collect(File::directories(database_path('migrations')))
+            ->filter(fn (string $path): bool => is_dir($path))
+            ->values()
+            ->all();
+
+        if ($featureMigrationPaths !== []) {
+            $this->loadMigrationsFrom($featureMigrationPaths);
+        }
     }
 
     /**

@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Post;
+use App\Models\Post\Post;
 use App\Models\User;
 use App\Support\AccessControl;
 use Database\Seeders\RolesAndPermissionsSeeder;

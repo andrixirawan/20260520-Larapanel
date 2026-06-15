@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Support\AccessControl;
+use Database\Seeders\Post\PostSeeder;
+use Database\Seeders\User\UserSeeder;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -14,16 +13,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(RolesAndPermissionsSeeder::class);
-
-        $user = User::firstOrCreate([
-            'email' => 'test@example.com',
-        ], [
-            'name' => 'Test User',
-            'email_verified_at' => now(),
-            'password' => Hash::make('password'),
+        $this->call([
+            RolesAndPermissionsSeeder::class,
+            UserSeeder::class,
+            PostSeeder::class,
         ]);
-
-        $user->assignRole(AccessControl::ROLE_SUBSCRIBER);
     }
 }
