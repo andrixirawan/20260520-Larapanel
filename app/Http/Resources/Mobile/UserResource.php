@@ -5,6 +5,7 @@ namespace App\Http\Resources\Mobile;
 use App\Support\AccessControl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 
 class UserResource extends JsonResource
 {
@@ -15,11 +16,15 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $avatar = $this->avatar;
+
         return [
             'public_id' => $this->public_id,
             'name' => $this->name,
             'email' => $this->email,
-            'avatar' => $this->avatar,
+            'avatar' => $avatar && Str::startsWith($avatar, '/')
+                ? url($avatar)
+                : $avatar,
             'has_custom_avatar' => $this->has_custom_avatar,
             'email_verified_at' => $this->email_verified_at?->toISOString(),
             'is_email_verified' => $this->hasVerifiedEmail(),

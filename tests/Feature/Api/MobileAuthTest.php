@@ -1,12 +1,15 @@
 <?php
 
+use App\Actions\Mobile\CreateMobileAuthToken;
 use App\Models\MobileAuthToken;
 use App\Models\User;
 use App\Support\AccessControl;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\Features;
 
 uses(RefreshDatabase::class);
@@ -14,6 +17,13 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
 });
+
+function mobileProfileTokenFor(User $user): string
+{
+    [$token] = app(CreateMobileAuthToken::class)->handle($user, request(), 'Profile test');
+
+    return $token;
+}
 
 test('mobile users can register and receive bearer token', function () {
     Notification::fake();
@@ -73,6 +83,97 @@ test('mobile users can login fetch current user and logout', function () {
     $this->withToken($token)
         ->getJson(route('api.mobile.user'))
         ->assertUnauthorized();
+});
+
+test('mobile users can update their name and avatar', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+    $token = mobileProfileTokenFor($user);
+
+    $response = $this->withToken($token)
+        ->post(route('api.mobile.profile.update'), [
+            'name' => 'Updated Mobile User',
+            'avatar' => UploadedFile::fake()->image('mobile-avatar.png'),
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('message', 'Profile updated.')
+        ->assertJsonPath('data.name', 'Updated Mobile User')
+        ->assertJsonPath('data.has_custom_avatar', true);
+
+    $user->refresh();
+
+    expect($user->name)->toBe('Updated Mobile User')
+        ->and($response->json('data.avatar'))->toStartWith(
+            url("/users/{$user->public_id}/avatar?v="),
+        );
+
+    Storage::disk('public')->assertExists($user->getRawOriginal('avatar'));
+});
+
+test('mobile avatar upload replaces the previous local avatar', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+    $oldAvatar = "uploads/users/{$user->id}/avatars/old-avatar.jpg";
+    Storage::disk('public')->put($oldAvatar, 'old avatar');
+    $user->forceFill(['avatar' => $oldAvatar])->save();
+
+    $this->withToken(mobileProfileTokenFor($user))
+        ->post(route('api.mobile.profile.update'), [
+            'name' => $user->name,
+            'avatar' => UploadedFile::fake()->image('new-avatar.jpg'),
+        ], [
+            'Accept' => 'application/json',
+        ])
+        ->assertOk();
+
+    $user->refresh();
+
+    Storage::disk('public')->assertMissing($oldAvatar);
+    Storage::disk('public')->assertExists($user->getRawOriginal('avatar'));
+});
+
+test('mobile users can remove their custom avatar', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+    $avatar = "uploads/users/{$user->id}/avatars/avatar.jpg";
+    Storage::disk('public')->put($avatar, 'avatar');
+    $user->forceFill(['avatar' => $avatar])->save();
+
+    $this->withToken(mobileProfileTokenFor($user))
+        ->postJson(route('api.mobile.profile.update'), [
+            'name' => $user->name,
+            'remove_avatar' => true,
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.avatar', null)
+        ->assertJsonPath('data.has_custom_avatar', false);
+
+    expect($user->refresh()->getRawOriginal('avatar'))->toBeNull();
+    Storage::disk('public')->assertMissing($avatar);
+});
+
+test('mobile profile update validates input', function () {
+    $user = User::factory()->create();
+
+    $this->withToken(mobileProfileTokenFor($user))
+        ->postJson(route('api.mobile.profile.update'), [
+            'name' => '',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('name');
+});
+
+test('mobile profile update requires authentication', function () {
+    $this->postJson(route('api.mobile.profile.update'), [
+        'name' => 'Unauthorized Update',
+    ])->assertUnauthorized();
 });
 
 test('mobile login rejects invalid credentials', function () {

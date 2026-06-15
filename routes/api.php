@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Mobile\AuthController;
 use App\Http\Controllers\Api\Mobile\PostController;
+use App\Http\Controllers\Api\Mobile\ProfileController;
 use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
 
@@ -23,6 +24,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
 
     Route::middleware('mobile.auth')->group(function () {
         Route::get('user', [AuthController::class, 'user'])->name('user');
+        Route::post('user/profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::apiResource('posts', PostController::class)
             ->middlewareFor(['index', 'show'], 'can:'.AccessControl::PERMISSION_POSTS_VIEW)
             ->middlewareFor('store', 'can:'.AccessControl::PERMISSION_POSTS_CREATE)

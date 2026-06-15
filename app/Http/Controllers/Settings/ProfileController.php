@@ -6,19 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Models\User;
+use App\Support\UserAvatarStorage;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProfileController extends Controller
 {
+    public function __construct(private readonly UserAvatarStorage $avatars) {}
+
     /**
      * Show the user's profile settings page.
      */
@@ -45,13 +46,13 @@ class ProfileController extends Controller
         }
 
         if ($request->boolean('remove_avatar') || $request->hasFile('avatar')) {
-            $this->deleteLocalAvatar($user);
+            $this->avatars->delete($user);
 
             $user->avatar = null;
         }
 
-        if ($request->hasFile('avatar')) {
-            $user->avatar = $this->storeAvatar($request, $user);
+        if ($avatar = $request->file('avatar')) {
+            $user->avatar = $this->avatars->store($user, $avatar);
         }
 
         $user->save();
@@ -65,9 +66,9 @@ class ProfileController extends Controller
     {
         $avatar = $user->getRawOriginal('avatar');
 
-        abort_unless($avatar && Storage::disk($this->avatarDisk())->exists($avatar), 404);
+        abort_unless($avatar && Storage::disk($this->avatars->disk())->exists($avatar), 404);
 
-        return Storage::disk($this->avatarDisk())->response($avatar);
+        return Storage::disk($this->avatars->disk())->response($avatar);
     }
 
     /**
@@ -79,7 +80,7 @@ class ProfileController extends Controller
 
         Auth::logout();
 
-        $this->deleteLocalAvatar($user);
+        $this->avatars->delete($user);
 
         $user->delete();
 
@@ -87,73 +88,5 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
-    }
-
-    private function avatarDirectory(User $user): string
-    {
-        return str_replace(
-            '{user}',
-            (string) $user->id,
-            config('uploads.user_avatars.directory', 'uploads/users/{user}/avatars'),
-        );
-    }
-
-    private function storeAvatar(Request $request, User $user): string
-    {
-        $avatar = $request->file('avatar');
-
-        if (! $avatar) {
-            throw ValidationException::withMessages([
-                'avatar' => __('The avatar could not be uploaded.'),
-            ]);
-        }
-
-        $storedAvatar = $avatar->storeAs(
-            trim($this->avatarDirectory($user), '/'),
-            $avatar->hashName(),
-            ['disk' => $this->avatarDisk()],
-        );
-
-        if (! is_string($storedAvatar)) {
-            throw ValidationException::withMessages([
-                'avatar' => __('The avatar could not be uploaded. Please check the storage path and permissions.'),
-            ]);
-        }
-
-        return $storedAvatar;
-    }
-
-    private function deleteLocalAvatar(User $user): void
-    {
-        $path = $this->localAvatarPath($user, $user->getRawOriginal('avatar'));
-
-        if ($path) {
-            Storage::disk($this->avatarDisk())->delete($path);
-        }
-    }
-
-    private function avatarDisk(): string
-    {
-        return config('uploads.user_avatars.disk', 'public');
-    }
-
-    private function localAvatarPath(User $user, ?string $avatar): ?string
-    {
-        if (! $avatar) {
-            return null;
-        }
-
-        $storagePath = parse_url(Storage::disk($this->avatarDisk())->url(''), PHP_URL_PATH);
-        $storagePrefix = '/'.trim($storagePath ?: '/storage', '/');
-        $avatarPath = parse_url($avatar, PHP_URL_PATH) ?: $avatar;
-
-        if (Str::startsWith($avatarPath, $storagePrefix.'/')) {
-            $avatar = Str::after($avatarPath, $storagePrefix.'/');
-        }
-
-        $avatar = ltrim($avatar, '/');
-        $avatarDirectory = trim($this->avatarDirectory($user), '/').'/';
-
-        return Str::startsWith($avatar, $avatarDirectory) ? $avatar : null;
     }
 }
