@@ -14,13 +14,12 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             ->name('posts.index')
             ->middleware('can:'.AccessControl::PERMISSION_POSTS_VIEW);
 
-        Route::get('posts/my', [PostController::class, 'mine'])
-            ->name('posts.mine')
-            ->middleware('can:'.AccessControl::PERMISSION_POSTS_VIEW);
-
         Route::apiResource('posts', PostController::class)
             ->except(['index'])
-            ->middlewareFor('show', 'can:'.AccessControl::PERMISSION_POSTS_VIEW)
+            ->middlewareFor('show', [
+                'can:'.AccessControl::PERMISSION_POSTS_VIEW,
+                'can:view,post',
+            ])
             ->middlewareFor('store', 'can:'.AccessControl::PERMISSION_POSTS_CREATE)
             ->middlewareFor('update', [
                 'can:'.AccessControl::PERMISSION_POSTS_UPDATE,

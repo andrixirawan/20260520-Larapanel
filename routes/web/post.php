@@ -13,13 +13,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('posts.index')
         ->middleware('can:'.AccessControl::PERMISSION_POSTS_VIEW);
 
-    Route::get('posts/my', [PostController::class, 'mine'])
-        ->name('posts.mine')
-        ->middleware('can:'.AccessControl::PERMISSION_POSTS_VIEW);
-
     Route::resource('posts', PostController::class)
         ->except(['index'])
-        ->middlewareFor('show', 'can:'.AccessControl::PERMISSION_POSTS_VIEW)
+        ->middlewareFor('show', [
+            'can:'.AccessControl::PERMISSION_POSTS_VIEW,
+            'can:view,post',
+        ])
         ->middlewareFor(['create', 'store'], 'can:'.AccessControl::PERMISSION_POSTS_CREATE)
         ->middlewareFor(['edit', 'update'], [
             'can:'.AccessControl::PERMISSION_POSTS_UPDATE,

@@ -8,6 +8,12 @@ use App\Support\AccessControl;
 
 class PostPolicy
 {
+    public function view(User $user, Post $post): bool
+    {
+        return $user->can(AccessControl::PERMISSION_POSTS_VIEW)
+            && $post->user_id === $user->id;
+    }
+
     public function update(User $user, Post $post): bool
     {
         return $user->can(AccessControl::PERMISSION_POSTS_UPDATE)

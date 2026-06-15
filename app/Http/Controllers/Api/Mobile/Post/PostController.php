@@ -27,13 +27,6 @@ class PostController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
-        $posts = $this->postIndexQuery->paginateForMobile($request);
-
-        return $this->indexResponse($request, $posts, 'all');
-    }
-
-    public function mine(Request $request): AnonymousResourceCollection
-    {
         $posts = $this->postIndexQuery->paginateForMobile($request, $request->user());
 
         return $this->indexResponse($request, $posts, 'mine');

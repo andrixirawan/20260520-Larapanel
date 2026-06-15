@@ -111,10 +111,18 @@ test('posts can be opened from a public slug url', function () {
 });
 
 test('authenticated posts index supports the same filters', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['name' => 'Sari']);
     $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
-    Post::factory()->create(['title' => 'Gamma dashboard post', 'author' => 'Sari']);
-    Post::factory()->create(['title' => 'Delta dashboard post', 'author' => 'Joko']);
+    Post::factory()->create([
+        'title' => 'Gamma dashboard post',
+        'author' => $user->name,
+        'user_id' => $user->id,
+    ]);
+    Post::factory()->create([
+        'title' => 'Delta dashboard post',
+        'author' => $user->name,
+        'user_id' => $user->id,
+    ]);
 
     $this->actingAs($user)
         ->get(route('posts.index', [
@@ -133,7 +141,7 @@ test('authenticated posts index supports the same filters', function () {
         );
 });
 
-test('authenticated users can view only their own posts from my posts list', function () {
+test('authenticated users can view only their own posts from the dashboard post list', function () {
     $user = User::factory()->create(['name' => 'Owner']);
     $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
     $otherUser = User::factory()->create(['name' => 'Other']);
@@ -150,7 +158,7 @@ test('authenticated users can view only their own posts from my posts list', fun
     ]);
 
     $this->actingAs($user)
-        ->get(route('posts.mine'))
+        ->get(route('posts.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('posts/index')
@@ -158,6 +166,21 @@ test('authenticated users can view only their own posts from my posts list', fun
             ->where('posts.data.0.title', 'Owned post')
             ->where('posts.total', 1)
         );
+});
+
+test('authenticated users cannot open another users post from the dashboard', function () {
+    $owner = User::factory()->create(['name' => 'Owner']);
+    $owner->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $otherAdmin = User::factory()->create(['name' => 'Other Admin']);
+    $otherAdmin->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $post = Post::factory()->create([
+        'author' => $owner->name,
+        'user_id' => $owner->id,
+    ]);
+
+    $this->actingAs($otherAdmin)
+        ->get(route('posts.show', $post))
+        ->assertForbidden();
 });
 
 test('administrators cannot edit or delete posts they did not create', function () {

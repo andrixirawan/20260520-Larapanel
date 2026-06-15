@@ -12,7 +12,6 @@ import type { Paginated } from '@/types/pagination';
 export default function PostsIndex({
     posts,
     filters,
-    scope,
 }: {
     posts: Paginated<Post>;
     filters: PostFilters;
@@ -21,12 +20,9 @@ export default function PostsIndex({
 }) {
     const { auth } = usePage().props;
     const canCreatePost = auth.permissions['posts.create'];
-    const tableRoute = scope === 'mine' ? '/posts/my' : '/posts';
-    const pageTitle = scope === 'mine' ? 'My posts' : 'All posts';
-    const pageDescription =
-        scope === 'mine'
-            ? 'Posts created by your account.'
-            : 'All posts visible in the dashboard.';
+    const tableRoute = '/posts';
+    const pageTitle = 'My posts';
+    const pageDescription = 'Posts created by your account.';
     const columns = useMemo<ColumnDef<Post>[]>(
         () => [
             {
@@ -186,7 +182,7 @@ export default function PostsIndex({
 PostsIndex.layout = {
     breadcrumbs: [
         {
-            title: 'All posts',
+            title: 'My posts',
             href: '/posts',
         },
     ],

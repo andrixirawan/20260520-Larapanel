@@ -48,11 +48,6 @@ class PostController extends Controller
 
     public function index(Request $request): Response
     {
-        return $this->renderIndex($request, null, 'all');
-    }
-
-    public function mine(Request $request): Response
-    {
         return $this->renderIndex($request, $request->user(), 'mine');
     }
 
@@ -109,7 +104,7 @@ class PostController extends Controller
         return $this->postCoverService->response($post->cover);
     }
 
-    private function renderIndex(Request $request, $owner = null, string $scope = 'all'): Response
+    private function renderIndex(Request $request, $owner = null, string $scope = 'mine'): Response
     {
         return Inertia::render('posts/index', [
             'posts' => $this->postIndexQuery

@@ -31,17 +31,19 @@ test('mobile posts require authentication', function () {
 });
 
 test('mobile users can list and filter posts', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['name' => 'Rani']);
     $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
     $token = mobileTokenFor($user);
 
     Post::factory()->create([
         'title' => 'Laravel API Guide',
-        'author' => 'Rani',
+        'author' => $user->name,
+        'user_id' => $user->id,
     ]);
     Post::factory()->create([
         'title' => 'React Native Notes',
-        'author' => 'Budi',
+        'author' => $user->name,
+        'user_id' => $user->id,
     ]);
 
     $this->withToken($token)
@@ -82,7 +84,7 @@ test('mobile users can list only their own posts', function () {
     ]);
 
     $this->withToken($token)
-        ->getJson(route('api.mobile.posts.mine'))
+        ->getJson(route('api.mobile.posts.index'))
         ->assertOk()
         ->assertJsonPath('scope', 'mine')
         ->assertJsonPath('meta.total', 1)
@@ -258,5 +260,21 @@ test('mobile administrators cannot update or delete posts created by other users
 
     $this->withToken($token)
         ->deleteJson(route('api.mobile.posts.destroy', $post))
+        ->assertForbidden();
+});
+
+test('mobile administrators cannot view posts created by other users from the authenticated endpoint', function () {
+    $owner = User::factory()->create(['name' => 'Owner']);
+    $owner->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $otherAdmin = User::factory()->create(['name' => 'Other Admin']);
+    $otherAdmin->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $token = mobileTokenFor($otherAdmin);
+    $post = Post::factory()->create([
+        'author' => $owner->name,
+        'user_id' => $owner->id,
+    ]);
+
+    $this->withToken($token)
+        ->getJson(route('api.mobile.posts.show', $post))
         ->assertForbidden();
 });
