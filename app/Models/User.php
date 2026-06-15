@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasPublicId;
+use App\Models\Post\Post;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -80,6 +81,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function mobileAuthTokens(): HasMany
     {
         return $this->hasMany(MobileAuthToken::class);
+    }
+
+    /**
+     * @return HasMany<Post, $this>
+     */
+    public function posts(): HasMany
+    {
+        return $this->hasMany(Post::class);
     }
 
     private function versionAvatarUrl(string $url): string

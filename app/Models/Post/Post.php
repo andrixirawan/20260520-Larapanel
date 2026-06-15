@@ -3,9 +3,11 @@
 namespace App\Models\Post;
 
 use App\Models\Concerns\HasPublicId;
+use App\Models\User;
 use Database\Factories\Post\PostFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Post extends Model
 {
@@ -18,6 +20,7 @@ class Post extends Model
     protected $fillable = [
         'title',
         'slug',
+        'user_id',
         'cover',
         'body',
         'author',
@@ -37,5 +40,13 @@ class Post extends Model
         }
 
         return route('posts.cover', $this, false);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

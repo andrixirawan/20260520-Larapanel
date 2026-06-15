@@ -6,21 +6,27 @@ import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { Post, PostFilters } from '@/features/post/types';
+import type { Post, PostFilters, PostListScope } from '@/features/post/types';
 import type { Paginated } from '@/types/pagination';
 
 export default function PostsIndex({
     posts,
     filters,
+    scope,
 }: {
     posts: Paginated<Post>;
     filters: PostFilters;
+    scope: PostListScope;
     sortOptions: Record<string, string>;
 }) {
     const { auth } = usePage().props;
     const canCreatePost = auth.permissions['posts.create'];
-    const canUpdatePost = auth.permissions['posts.update'];
-    const canDeletePost = auth.permissions['posts.delete'];
+    const tableRoute = scope === 'mine' ? '/posts/my' : '/posts';
+    const pageTitle = scope === 'mine' ? 'My posts' : 'All posts';
+    const pageDescription =
+        scope === 'mine'
+            ? 'Posts created by your account.'
+            : 'All posts visible in the dashboard.';
     const columns = useMemo<ColumnDef<Post>[]>(
         () => [
             {
@@ -93,7 +99,7 @@ export default function PostsIndex({
                                 <span className="sr-only">View</span>
                             </Link>
                         </Button>
-                        {canUpdatePost && (
+                        {row.original.can_edit && (
                             <Button asChild size="icon-sm" variant="ghost">
                                 <Link
                                     href={`/posts/${row.original.public_id}/edit`}
@@ -103,7 +109,7 @@ export default function PostsIndex({
                                 </Link>
                             </Button>
                         )}
-                        {canDeletePost && (
+                        {row.original.can_delete && (
                             <Form
                                 action={`/posts/${row.original.public_id}`}
                                 method="post"
@@ -139,7 +145,7 @@ export default function PostsIndex({
                 ),
             },
         ],
-        [canDeletePost, canUpdatePost],
+        [],
     );
 
     return (
@@ -149,8 +155,8 @@ export default function PostsIndex({
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <Heading
-                        title="Posts"
-                        description="Manage simple posts with optional cover images."
+                        title={pageTitle}
+                        description={pageDescription}
                     />
 
                     {canCreatePost && (
@@ -167,7 +173,7 @@ export default function PostsIndex({
                     columns={columns}
                     data={posts}
                     filters={filters}
-                    route="/posts"
+                    route={tableRoute}
                     searchPlaceholder="Search posts"
                     emptyMessage="No posts yet."
                     totalLabel="posts"
@@ -180,7 +186,7 @@ export default function PostsIndex({
 PostsIndex.layout = {
     breadcrumbs: [
         {
-            title: 'Posts',
+            title: 'All posts',
             href: '/posts',
         },
     ],

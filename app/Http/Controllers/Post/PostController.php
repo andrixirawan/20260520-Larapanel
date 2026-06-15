@@ -48,13 +48,12 @@ class PostController extends Controller
 
     public function index(Request $request): Response
     {
-        return Inertia::render('posts/index', [
-            'posts' => $this->postIndexQuery
-                ->paginateForWeb($request)
-                ->through(fn (Post $post): array => PostData::fromModel($post)),
-            'filters' => $this->postIndexQuery->webFilters($request),
-            'sortOptions' => $this->postIndexQuery->webSortOptions(),
-        ]);
+        return $this->renderIndex($request, null, 'all');
+    }
+
+    public function mine(Request $request): Response
+    {
+        return $this->renderIndex($request, $request->user(), 'mine');
     }
 
     public function create(): Response
@@ -71,17 +70,17 @@ class PostController extends Controller
         return to_route('posts.index');
     }
 
-    public function show(Post $post): Response
+    public function show(Post $post, Request $request): Response
     {
         return Inertia::render('posts/show', [
-            'post' => PostData::fromModel($post),
+            'post' => PostData::fromModel($post, $request->user()),
         ]);
     }
 
-    public function edit(Post $post): Response
+    public function edit(Post $post, Request $request): Response
     {
         return Inertia::render('posts/edit', [
-            'post' => PostData::fromModel($post),
+            'post' => PostData::fromModel($post, $request->user()),
         ]);
     }
 
@@ -108,5 +107,17 @@ class PostController extends Controller
         abort_unless($post->cover && $this->postCoverService->exists($post->cover), 404);
 
         return $this->postCoverService->response($post->cover);
+    }
+
+    private function renderIndex(Request $request, $owner = null, string $scope = 'all'): Response
+    {
+        return Inertia::render('posts/index', [
+            'posts' => $this->postIndexQuery
+                ->paginateForWeb($request, $owner)
+                ->through(fn (Post $post): array => PostData::fromModel($post, $request->user())),
+            'filters' => $this->postIndexQuery->webFilters($request),
+            'sortOptions' => $this->postIndexQuery->webSortOptions(),
+            'scope' => $scope,
+        ]);
     }
 }

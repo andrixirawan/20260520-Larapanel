@@ -3,6 +3,7 @@
 namespace App\Queries\Post;
 
 use App\Models\Post\Post;
+use App\Models\User;
 use App\Support\TableQuery;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -41,7 +42,7 @@ final class PostIndexQuery
     /**
      * @return LengthAwarePaginator<int, Post>
      */
-    public function paginateForWeb(Request $request): LengthAwarePaginator
+    public function paginateForWeb(Request $request, ?User $owner = null): LengthAwarePaginator
     {
         $filters = $this->webFilters($request);
         $sortColumns = [
@@ -51,7 +52,7 @@ final class PostIndexQuery
             'created_at' => 'created_at',
         ];
 
-        return $this->baseQuery($filters['search'], $filters['author'])
+        return $this->baseQuery($filters['search'], $filters['author'], $owner)
             ->orderBy($sortColumns[$filters['sort']], $filters['direction'])
             ->orderByDesc('id')
             ->paginate($filters['per_page'])
@@ -90,11 +91,11 @@ final class PostIndexQuery
     /**
      * @return LengthAwarePaginator<int, Post>
      */
-    public function paginateForMobile(Request $request): LengthAwarePaginator
+    public function paginateForMobile(Request $request, ?User $owner = null): LengthAwarePaginator
     {
         $filters = $this->mobileFilters($request);
 
-        return $this->baseQuery($filters['search'], $filters['author'])
+        return $this->baseQuery($filters['search'], $filters['author'], $owner)
             ->when(
                 $filters['sort'] === 'oldest',
                 fn ($query) => $query->oldest(),
@@ -112,9 +113,11 @@ final class PostIndexQuery
             ->withQueryString();
     }
 
-    private function baseQuery(string $search, string $author)
+    private function baseQuery(string $search, string $author, ?User $owner = null)
     {
         return Post::query()
+            ->with('user:id,name')
+            ->when($owner, fn ($query) => $query->where('user_id', $owner->id))
             ->when($search, function ($query, string $value) {
                 $query->where(function ($query) use ($value) {
                     $query

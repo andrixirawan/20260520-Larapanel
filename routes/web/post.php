@@ -9,9 +9,24 @@ Route::get('posts/{post}/cover', [PostController::class, 'cover'])->name('posts.
 Route::get('p/{post:slug}', [PostController::class, 'publicShow'])->name('public.posts.show');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('posts', [PostController::class, 'index'])
+        ->name('posts.index')
+        ->middleware('can:'.AccessControl::PERMISSION_POSTS_VIEW);
+
+    Route::get('posts/my', [PostController::class, 'mine'])
+        ->name('posts.mine')
+        ->middleware('can:'.AccessControl::PERMISSION_POSTS_VIEW);
+
     Route::resource('posts', PostController::class)
-        ->middlewareFor(['index', 'show'], 'can:'.AccessControl::PERMISSION_POSTS_VIEW)
+        ->except(['index'])
+        ->middlewareFor('show', 'can:'.AccessControl::PERMISSION_POSTS_VIEW)
         ->middlewareFor(['create', 'store'], 'can:'.AccessControl::PERMISSION_POSTS_CREATE)
-        ->middlewareFor(['edit', 'update'], 'can:'.AccessControl::PERMISSION_POSTS_UPDATE)
-        ->middlewareFor('destroy', 'can:'.AccessControl::PERMISSION_POSTS_DELETE);
+        ->middlewareFor(['edit', 'update'], [
+            'can:'.AccessControl::PERMISSION_POSTS_UPDATE,
+            'can:update,post',
+        ])
+        ->middlewareFor('destroy', [
+            'can:'.AccessControl::PERMISSION_POSTS_DELETE,
+            'can:delete,post',
+        ]);
 });

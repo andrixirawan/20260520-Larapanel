@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Listeners\SendLoginNotification;
 use App\Listeners\SendLogoutNotification;
+use App\Models\Post\Post;
+use App\Policies\Post\PostPolicy;
 use App\Support\AccessControl;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
@@ -64,6 +66,7 @@ class AppServiceProvider extends ServiceProvider
     protected function configureAuthorization(): void
     {
         Gate::before(fn ($user, string $ability): ?bool => $user->hasRole(AccessControl::ROLE_SUPER_ADMIN) ? true : null);
+        Gate::policy(Post::class, PostPolicy::class);
     }
 
     /**

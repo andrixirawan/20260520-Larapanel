@@ -22,6 +22,7 @@ final class CreatePostAction
     {
         $attributes = Arr::except($validated, 'remove_cover');
         $attributes['slug'] = $this->postSlugService->ensureUnique($attributes['slug'] ?: $attributes['title']);
+        $attributes['user_id'] = $request->user()->id;
         $attributes['author'] = $request->user()->name;
 
         if ($request->hasFile('cover')) {

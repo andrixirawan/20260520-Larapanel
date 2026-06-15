@@ -49,6 +49,7 @@ test('post can be created with a cover image', function () {
 
     expect($post->slug)
         ->toBe('my-first-post')
+        ->and($post->user_id)->toBe($user->id)
         ->and($post->author)->toBe('Current Admin')
         ->and($post->cover)->toStartWith('uploads/posts/covers/')
         ->and($post->cover_url)->toBe("/posts/{$post->public_id}/cover")
@@ -132,6 +133,73 @@ test('authenticated posts index supports the same filters', function () {
         );
 });
 
+test('authenticated users can view only their own posts from my posts list', function () {
+    $user = User::factory()->create(['name' => 'Owner']);
+    $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $otherUser = User::factory()->create(['name' => 'Other']);
+
+    Post::factory()->create([
+        'title' => 'Owned post',
+        'author' => $user->name,
+        'user_id' => $user->id,
+    ]);
+    Post::factory()->create([
+        'title' => 'Other post',
+        'author' => $otherUser->name,
+        'user_id' => $otherUser->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('posts.mine'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('posts/index')
+            ->where('scope', 'mine')
+            ->where('posts.data.0.title', 'Owned post')
+            ->where('posts.total', 1)
+        );
+});
+
+test('administrators cannot edit or delete posts they did not create', function () {
+    $owner = User::factory()->create(['name' => 'Owner']);
+    $owner->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $otherAdmin = User::factory()->create(['name' => 'Other Admin']);
+    $otherAdmin->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $post = Post::factory()->create([
+        'author' => $owner->name,
+        'user_id' => $owner->id,
+    ]);
+
+    $this->actingAs($otherAdmin)
+        ->get(route('posts.edit', $post))
+        ->assertForbidden();
+
+    $this->actingAs($otherAdmin)
+        ->delete(route('posts.destroy', $post))
+        ->assertForbidden();
+});
+
+test('superadmin can edit and delete posts created by other users', function () {
+    $owner = User::factory()->create(['name' => 'Owner']);
+    $owner->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $superAdmin = User::factory()->create(['name' => 'Super Admin']);
+    $superAdmin->assignRole(AccessControl::ROLE_SUPER_ADMIN);
+    $post = Post::factory()->create([
+        'author' => $owner->name,
+        'user_id' => $owner->id,
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('posts.edit', $post))
+        ->assertOk();
+
+    $this->actingAs($superAdmin)
+        ->delete(route('posts.destroy', $post))
+        ->assertRedirect(route('posts.index'));
+
+    expect($post->fresh())->toBeNull();
+});
+
 test('post cover upload replaces the previous cover', function () {
     Storage::fake('public');
 
@@ -139,7 +207,11 @@ test('post cover upload replaces the previous cover', function () {
     $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
     $oldCover = 'uploads/posts/covers/old-cover.jpg';
     Storage::disk('public')->put($oldCover, 'old cover');
-    $post = Post::factory()->create(['cover' => $oldCover]);
+    $post = Post::factory()->create([
+        'cover' => $oldCover,
+        'author' => $user->name,
+        'user_id' => $user->id,
+    ]);
     $originalAuthor = $post->author;
 
     $response = $this->actingAs($user)->post(route('posts.update', $post), [
@@ -168,7 +240,11 @@ test('post cover can be removed', function () {
     $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
     $cover = 'uploads/posts/covers/cover.jpg';
     Storage::disk('public')->put($cover, 'cover');
-    $post = Post::factory()->create(['cover' => $cover]);
+    $post = Post::factory()->create([
+        'cover' => $cover,
+        'author' => $user->name,
+        'user_id' => $user->id,
+    ]);
 
     $response = $this->actingAs($user)->post(route('posts.update', $post), [
         '_method' => 'put',
@@ -193,7 +269,11 @@ test('deleting a post removes its cover', function () {
     $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
     $cover = 'uploads/posts/covers/cover.jpg';
     Storage::disk('public')->put($cover, 'cover');
-    $post = Post::factory()->create(['cover' => $cover]);
+    $post = Post::factory()->create([
+        'cover' => $cover,
+        'author' => $user->name,
+        'user_id' => $user->id,
+    ]);
 
     $response = $this->actingAs($user)->delete(route('posts.destroy', $post));
 

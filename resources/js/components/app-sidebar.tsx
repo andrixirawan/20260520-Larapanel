@@ -52,6 +52,20 @@ export function AppSidebar() {
             title: 'Posts',
             href: '/posts',
             icon: FileText,
+            items: [
+                {
+                    title: 'All posts',
+                    href: '/posts',
+                },
+                {
+                    title: 'My posts',
+                    href: '/posts/my',
+                },
+                {
+                    title: 'New post',
+                    href: '/posts/create',
+                },
+            ],
         },
         ...(auth.permissions['pos.sales.create']
             ? [

@@ -6,9 +6,6 @@ import { Button } from '@/components/ui/button';
 import type { Post } from '@/features/post/types';
 
 export default function PostsShow({ post }: { post: Post }) {
-    const { auth } = usePage().props;
-    const canUpdatePost = auth.permissions['posts.update'];
-
     return (
         <>
             <Head title={post.title} />
@@ -21,7 +18,7 @@ export default function PostsShow({ post }: { post: Post }) {
                         <Button asChild variant="outline">
                             <Link href="/posts">Back</Link>
                         </Button>
-                        {canUpdatePost && (
+                        {post.can_edit && (
                             <Button asChild>
                                 <Link href={`/posts/${post.public_id}/edit`}>
                                     <Pencil />

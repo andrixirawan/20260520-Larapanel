@@ -29,11 +29,14 @@ class PostController extends Controller
     {
         $posts = $this->postIndexQuery->paginateForMobile($request);
 
-        return PostResource::collection($posts)
-            ->additional([
-                'filters' => $this->postIndexQuery->mobileFilters($request),
-                'sort_options' => $this->postIndexQuery->mobileSortOptions(),
-            ]);
+        return $this->indexResponse($request, $posts, 'all');
+    }
+
+    public function mine(Request $request): AnonymousResourceCollection
+    {
+        $posts = $this->postIndexQuery->paginateForMobile($request, $request->user());
+
+        return $this->indexResponse($request, $posts, 'mine');
     }
 
     public function store(StorePostRequest $request): JsonResponse
@@ -70,5 +73,18 @@ class PostController extends Controller
         return response()->json([
             'message' => 'Post deleted.',
         ]);
+    }
+
+    private function indexResponse(
+        Request $request,
+        AnonymousResourceCollection|\Illuminate\Pagination\LengthAwarePaginator $posts,
+        string $scope,
+    ): AnonymousResourceCollection {
+        return PostResource::collection($posts)
+            ->additional([
+                'filters' => $this->postIndexQuery->mobileFilters($request),
+                'sort_options' => $this->postIndexQuery->mobileSortOptions(),
+                'scope' => $scope,
+            ]);
     }
 }

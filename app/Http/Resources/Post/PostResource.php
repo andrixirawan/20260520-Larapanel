@@ -17,7 +17,7 @@ class PostResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $data = PostData::fromModel($this->resource);
+        $data = PostData::fromModel($this->resource, $request->user());
         $data['cover_url'] = $this->cover ? route('posts.cover', $this->resource) : null;
 
         return $data;
