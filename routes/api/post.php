@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Api\Post\PublicPostController;
 use App\Http\Controllers\Api\Mobile\Post\PostController;
-use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
 
 Route::get('posts', [PublicPostController::class, 'index'])->name('api.posts.index');
@@ -11,22 +10,25 @@ Route::get('posts/{post:slug}', [PublicPostController::class, 'show'])->name('ap
 Route::prefix('mobile')->name('api.mobile.')->group(function () {
     Route::middleware('mobile.auth')->group(function () {
         Route::get('posts', [PostController::class, 'index'])
-            ->name('posts.index')
-            ->middleware('can:'.AccessControl::PERMISSION_POSTS_VIEW);
+            ->name('posts.index');
+
+        Route::get('posts/all', [PostController::class, 'index'])
+            ->name('posts.index-all')
+            ->defaults('scope', 'all');
+
+        Route::get('posts/mine', [PostController::class, 'index'])
+            ->name('posts.index-mine')
+            ->defaults('scope', 'mine');
 
         Route::apiResource('posts', PostController::class)
             ->except(['index'])
             ->middlewareFor('show', [
-                'can:'.AccessControl::PERMISSION_POSTS_VIEW,
                 'can:view,post',
             ])
-            ->middlewareFor('store', 'can:'.AccessControl::PERMISSION_POSTS_CREATE)
             ->middlewareFor('update', [
-                'can:'.AccessControl::PERMISSION_POSTS_UPDATE,
                 'can:update,post',
             ])
             ->middlewareFor('destroy', [
-                'can:'.AccessControl::PERMISSION_POSTS_DELETE,
                 'can:delete,post',
             ]);
     });

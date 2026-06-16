@@ -117,9 +117,40 @@ test('mobile users can list only their own posts', function () {
         ->assertJsonPath('data.0.title', 'Owned mobile post');
 });
 
+test('mobile users can use all and mine list aliases', function () {
+    $user = User::factory()->create(['name' => 'Mobile Owner']);
+    $user->assignRole(AccessControl::ROLE_SUBSCRIBER);
+    $otherUser = User::factory()->create(['name' => 'Other Mobile']);
+    $token = mobileTokenFor($user);
+
+    Post::factory()->create([
+        'title' => 'Owned mobile post',
+        'author' => $user->name,
+        'user_id' => $user->id,
+    ]);
+    Post::factory()->create([
+        'title' => 'Other mobile post',
+        'author' => $otherUser->name,
+        'user_id' => $otherUser->id,
+    ]);
+
+    $this->withToken($token)
+        ->getJson(route('api.mobile.posts.index-all'))
+        ->assertOk()
+        ->assertJsonPath('scope', 'all')
+        ->assertJsonPath('meta.total', 2);
+
+    $this->withToken($token)
+        ->getJson(route('api.mobile.posts.index-mine'))
+        ->assertOk()
+        ->assertJsonPath('scope', 'mine')
+        ->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.title', 'Owned mobile post');
+});
+
 test('mobile users can create show update and delete posts', function () {
     $user = User::factory()->create(['name' => 'Mobile Writer']);
-    $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $user->assignRole(AccessControl::ROLE_SUBSCRIBER);
     $token = mobileTokenFor($user);
 
     $create = $this->withToken($token)
@@ -160,23 +191,17 @@ test('mobile users can create show update and delete posts', function () {
     expect(Post::query()->where('public_id', $postPublicId)->exists())->toBeFalse();
 });
 
-test('mobile post mutations require write permissions', function () {
+test('mobile subscribers cannot update or delete posts owned by other users', function () {
     $user = User::factory()->create();
     $user->assignRole(AccessControl::ROLE_SUBSCRIBER);
     $token = mobileTokenFor($user);
-    $post = Post::factory()->create(['user_id' => $user->id, 'author' => $user->name]);
+    $owner = User::factory()->create();
+    $owner->assignRole(AccessControl::ROLE_SUBSCRIBER);
+    $post = Post::factory()->create(['user_id' => $owner->id, 'author' => $owner->name]);
 
     $this->withToken($token)
         ->getJson(route('api.mobile.posts.index'))
         ->assertOk();
-
-    $this->withToken($token)
-        ->postJson(route('api.mobile.posts.store'), [
-            'title' => 'Unauthorized Post',
-            'slug' => '',
-            'body' => 'This should not be created.',
-        ])
-        ->assertForbidden();
 
     $this->withToken($token)
         ->patchJson(route('api.mobile.posts.update', $post), [

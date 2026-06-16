@@ -63,6 +63,10 @@ final class PostIndexQuery
     {
         $scope = trim($request->string('scope')->toString());
 
+        if ($scope === '') {
+            $scope = (string) $request->route('scope', '');
+        }
+
         return in_array($scope, ['all', 'mine'], true) ? $scope : 'mine';
     }
 
