@@ -21,7 +21,8 @@ final class UpdatePostAction
     public function handle(Request $request, Post $post, array $validated): Post
     {
         $attributes = Arr::except($validated, 'remove_cover');
-        $attributes['slug'] = $this->postSlugService->ensureUnique($attributes['slug'] ?: $attributes['title'], $post);
+        $slugSource = filled($attributes['slug'] ?? null) ? $attributes['slug'] : $attributes['title'];
+        $attributes['slug'] = $this->postSlugService->ensureUnique($slugSource, $post);
 
         if ($request->boolean('remove_cover') || $request->hasFile('cover')) {
             $this->postCoverService->deleteForPost($post);

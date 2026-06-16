@@ -191,6 +191,30 @@ test('mobile users can create show update and delete posts', function () {
     expect(Post::query()->where('public_id', $postPublicId)->exists())->toBeFalse();
 });
 
+test('mobile users can omit slug when creating and updating posts', function () {
+    $user = User::factory()->create(['name' => 'Mobile Writer']);
+    $user->assignRole(AccessControl::ROLE_SUBSCRIBER);
+    $token = mobileTokenFor($user);
+
+    $create = $this->withToken($token)
+        ->postJson(route('api.mobile.posts.store'), [
+            'title' => 'Generated Mobile Slug',
+            'body' => 'Created without sending a slug.',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('data.slug', 'generated-mobile-slug');
+
+    $postPublicId = $create->json('data.public_id');
+
+    $this->withToken($token)
+        ->patchJson(route('api.mobile.posts.update', $postPublicId), [
+            'title' => 'Regenerated Mobile Slug',
+            'body' => 'Updated without sending a slug.',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.slug', 'regenerated-mobile-slug');
+});
+
 test('mobile subscribers cannot update or delete posts owned by other users', function () {
     $user = User::factory()->create();
     $user->assignRole(AccessControl::ROLE_SUBSCRIBER);

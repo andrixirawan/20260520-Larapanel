@@ -21,7 +21,8 @@ final class CreatePostAction
     public function handle(Request $request, array $validated): Post
     {
         $attributes = Arr::except($validated, 'remove_cover');
-        $attributes['slug'] = $this->postSlugService->ensureUnique($attributes['slug'] ?: $attributes['title']);
+        $slugSource = filled($attributes['slug'] ?? null) ? $attributes['slug'] : $attributes['title'];
+        $attributes['slug'] = $this->postSlugService->ensureUnique($slugSource);
         $attributes['user_id'] = $request->user()->id;
         $attributes['author'] = $request->user()->name;
 
