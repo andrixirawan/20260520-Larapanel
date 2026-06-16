@@ -27,9 +27,11 @@ class PostController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
-        $posts = $this->postIndexQuery->paginateForMobile($request, $request->user());
+        $scope = $this->postIndexQuery->mobileScope($request);
+        $owner = $scope === 'mine' ? $request->user() : null;
+        $posts = $this->postIndexQuery->paginateForMobile($request, $owner);
 
-        return $this->indexResponse($request, $posts, 'mine');
+        return $this->indexResponse($request, $posts, $scope);
     }
 
     public function store(StorePostRequest $request): JsonResponse

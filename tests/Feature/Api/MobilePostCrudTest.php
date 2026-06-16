@@ -66,6 +66,32 @@ test('mobile users can list and filter posts', function () {
         ]);
 });
 
+test('mobile users can list all posts with protected scope all', function () {
+    $user = User::factory()->create(['name' => 'Mobile Reader']);
+    $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $otherUser = User::factory()->create(['name' => 'Other Writer']);
+    $token = mobileTokenFor($user);
+
+    Post::factory()->create([
+        'title' => 'Owned mobile post',
+        'author' => $user->name,
+        'user_id' => $user->id,
+    ]);
+    Post::factory()->create([
+        'title' => 'Other mobile post',
+        'author' => $otherUser->name,
+        'user_id' => $otherUser->id,
+    ]);
+
+    $this->withToken($token)
+        ->getJson(route('api.mobile.posts.index', ['scope' => 'all']))
+        ->assertOk()
+        ->assertJsonPath('scope', 'all')
+        ->assertJsonPath('meta.total', 2)
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.can_edit', false);
+});
+
 test('mobile users can list only their own posts', function () {
     $user = User::factory()->create(['name' => 'Mobile Owner']);
     $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);

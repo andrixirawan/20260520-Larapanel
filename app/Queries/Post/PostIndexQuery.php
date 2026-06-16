@@ -59,6 +59,13 @@ final class PostIndexQuery
             ->withQueryString();
     }
 
+    public function mobileScope(Request $request): string
+    {
+        $scope = trim($request->string('scope')->toString());
+
+        return in_array($scope, ['all', 'mine'], true) ? $scope : 'mine';
+    }
+
     /**
      * @return array{search: string, author: string, sort: string, per_page: int}
      */
