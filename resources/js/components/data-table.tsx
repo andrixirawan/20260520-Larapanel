@@ -83,10 +83,7 @@ export function DataTable<TData>({
         router.get(
             route,
             cleanQuery({
-                search: filters.search,
-                sort: filters.sort,
-                direction: filters.direction,
-                per_page: filters.per_page,
+                ...filters,
                 page: data.current_page,
                 ...query,
             }),

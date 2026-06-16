@@ -15,4 +15,4 @@ export type TableFilters = {
     sort: string;
     direction: 'asc' | 'desc';
     per_page: number;
-};
+} & Record<string, string | number | undefined>;

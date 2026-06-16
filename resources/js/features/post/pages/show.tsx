@@ -16,7 +16,7 @@ export default function PostsShow({ post }: { post: Post }) {
 
                     <div className="flex gap-2">
                         <Button asChild variant="outline">
-                            <Link href="/posts">Back</Link>
+                            <Link href="/posts/mine">Back</Link>
                         </Button>
                         {post.can_edit && (
                             <Button asChild>
@@ -56,7 +56,7 @@ PostsShow.layout = {
     breadcrumbs: [
         {
             title: 'Posts',
-            href: '/posts',
+            href: '/posts/mine',
         },
         {
             title: 'Detail',

@@ -43,7 +43,7 @@ test('post can be created with a cover image', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('posts.index'));
+        ->assertRedirect(route('posts.mine'));
 
     $post = Post::query()->firstOrFail();
 
@@ -110,7 +110,18 @@ test('posts can be opened from a public slug url', function () {
         );
 });
 
-test('authenticated posts index supports the same filters', function () {
+test('public blog index route renders the post listing', function () {
+    Post::factory()->create(['title' => 'Blog route post']);
+
+    $this->get(route('public.posts.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('welcome')
+            ->where('posts.data.0.title', 'Blog route post')
+        );
+});
+
+test('authenticated all posts index supports the same filters', function () {
     $user = User::factory()->create(['name' => 'Sari']);
     $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
     Post::factory()->create([
@@ -128,7 +139,7 @@ test('authenticated posts index supports the same filters', function () {
         ->get(route('posts.index', [
             'search' => 'Gamma',
             'author' => 'Sari',
-            'sort' => 'latest',
+            'sort' => 'title',
             'per_page' => 5,
         ]))
         ->assertOk()
@@ -136,12 +147,13 @@ test('authenticated posts index supports the same filters', function () {
             ->component('posts/index')
             ->where('filters.search', 'Gamma')
             ->where('filters.author', 'Sari')
+            ->where('scope', 'all')
             ->where('posts.data.0.title', 'Gamma dashboard post')
             ->where('posts.total', 1)
         );
 });
 
-test('authenticated users can view only their own posts from the dashboard post list', function () {
+test('authenticated users can view all posts from the dashboard all posts list', function () {
     $user = User::factory()->create(['name' => 'Owner']);
     $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
     $otherUser = User::factory()->create(['name' => 'Other']);
@@ -159,6 +171,32 @@ test('authenticated users can view only their own posts from the dashboard post 
 
     $this->actingAs($user)
         ->get(route('posts.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('posts/index')
+            ->where('scope', 'all')
+            ->where('posts.total', 2)
+        );
+});
+
+test('authenticated users can view only their own posts from the dashboard my posts list', function () {
+    $user = User::factory()->create(['name' => 'Owner']);
+    $user->assignRole(AccessControl::ROLE_ADMINISTRATOR);
+    $otherUser = User::factory()->create(['name' => 'Other']);
+
+    Post::factory()->create([
+        'title' => 'Owned post',
+        'author' => $user->name,
+        'user_id' => $user->id,
+    ]);
+    Post::factory()->create([
+        'title' => 'Other post',
+        'author' => $otherUser->name,
+        'user_id' => $otherUser->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('posts.mine'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('posts/index')
@@ -218,7 +256,7 @@ test('superadmin can edit and delete posts created by other users', function () 
 
     $this->actingAs($superAdmin)
         ->delete(route('posts.destroy', $post))
-        ->assertRedirect(route('posts.index'));
+        ->assertRedirect(route('posts.mine'));
 
     expect($post->fresh())->toBeNull();
 });
@@ -247,7 +285,7 @@ test('post cover upload replaces the previous cover', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('posts.index'));
+        ->assertRedirect(route('posts.mine'));
 
     $post->refresh();
 
@@ -279,7 +317,7 @@ test('post cover can be removed', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('posts.index'));
+        ->assertRedirect(route('posts.mine'));
 
     expect($post->refresh()->cover)->toBeNull();
     Storage::disk('public')->assertMissing($cover);
@@ -302,7 +340,7 @@ test('deleting a post removes its cover', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('posts.index'));
+        ->assertRedirect(route('posts.mine'));
 
     Storage::disk('public')->assertMissing($cover);
     expect($post->fresh())->toBeNull();

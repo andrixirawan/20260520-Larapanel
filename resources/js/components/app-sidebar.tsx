@@ -54,8 +54,12 @@ export function AppSidebar() {
             icon: FileText,
             items: [
                 {
-                    title: 'My posts',
+                    title: 'All posts',
                     href: '/posts',
+                },
+                {
+                    title: 'My posts',
+                    href: '/posts/mine',
                 },
                 {
                     title: 'New post',

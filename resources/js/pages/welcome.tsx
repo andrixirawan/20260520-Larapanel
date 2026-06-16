@@ -31,7 +31,8 @@ export default function Welcome({
         filters.search ||
             filters.author ||
             filters.sort !== 'created_at' ||
-            filters.direction !== 'desc',
+            filters.direction !== 'desc' ||
+            filters.per_page !== 10,
     );
 
     return (
@@ -41,7 +42,7 @@ export default function Welcome({
             <main className="min-h-screen bg-background text-foreground">
                 <header className="border-b">
                     <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-                        <Link href="/" className="text-lg font-semibold">
+                        <Link href="/blog" className="text-lg font-semibold">
                             Posts
                         </Link>
 
@@ -75,7 +76,7 @@ export default function Welcome({
                     </div>
 
                     <form
-                        action="/"
+                        action="/blog"
                         method="get"
                         className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_140px_120px_120px_auto]"
                     >
@@ -130,13 +131,12 @@ export default function Welcome({
                             <Button
                                 type="submit"
                                 size="sm"
-                                disabled={!search.trim()}
                             >
                                 Search
                             </Button>
                             {hasFilters && (
                                 <Button asChild variant="ghost" size="sm">
-                                    <Link href="/">Reset</Link>
+                                    <Link href="/blog">Reset</Link>
                                 </Button>
                             )}
                         </div>
@@ -165,7 +165,7 @@ export default function Welcome({
                                     <div className="grid content-start gap-3">
                                         <div className="grid gap-1">
                                             <Link
-                                                href={`/p/${post.slug}`}
+                                                href={`/blog/${post.slug}`}
                                                 className="text-xl font-semibold hover:underline"
                                             >
                                                 {post.title}
@@ -185,7 +185,7 @@ export default function Welcome({
                                             size="sm"
                                             className="w-fit"
                                         >
-                                            <Link href={`/p/${post.slug}`}>
+                                            <Link href={`/blog/${post.slug}`}>
                                                 Read
                                             </Link>
                                         </Button>

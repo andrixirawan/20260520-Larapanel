@@ -48,6 +48,11 @@ class PostController extends Controller
 
     public function index(Request $request): Response
     {
+        return $this->renderIndex($request, null, 'all');
+    }
+
+    public function mine(Request $request): Response
+    {
         return $this->renderIndex($request, $request->user(), 'mine');
     }
 
@@ -62,7 +67,7 @@ class PostController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Post created.')]);
 
-        return to_route('posts.index');
+        return to_route('posts.mine');
     }
 
     public function show(Post $post, Request $request): Response
@@ -85,7 +90,7 @@ class PostController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Post updated.')]);
 
-        return to_route('posts.index');
+        return to_route('posts.mine');
     }
 
     public function destroy(Post $post): RedirectResponse
@@ -94,7 +99,7 @@ class PostController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Post deleted.')]);
 
-        return to_route('posts.index');
+        return to_route('posts.mine');
     }
 
     public function cover(Post $post): StreamedResponse

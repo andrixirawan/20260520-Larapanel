@@ -132,7 +132,7 @@ export default function PostsCreate() {
                                     Save
                                 </Button>
                                 <Button asChild variant="outline">
-                                    <Link href="/posts">Cancel</Link>
+                                    <Link href="/posts/mine">Cancel</Link>
                                 </Button>
                             </div>
                         </>
@@ -147,7 +147,7 @@ PostsCreate.layout = {
     breadcrumbs: [
         {
             title: 'Posts',
-            href: '/posts',
+            href: '/posts/mine',
         },
         {
             title: 'Create',

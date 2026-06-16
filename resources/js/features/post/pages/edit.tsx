@@ -161,7 +161,7 @@ export default function PostsEdit({ post }: { post: Post }) {
                                     Save changes
                                 </Button>
                                 <Button asChild variant="outline">
-                                    <Link href="/posts">Cancel</Link>
+                                    <Link href="/posts/mine">Cancel</Link>
                                 </Button>
                             </div>
                         </>
@@ -176,7 +176,7 @@ PostsEdit.layout = {
     breadcrumbs: [
         {
             title: 'Posts',
-            href: '/posts',
+            href: '/posts/mine',
         },
         {
             title: 'Edit',

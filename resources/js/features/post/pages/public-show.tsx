@@ -20,7 +20,7 @@ export default function PublicPostShow({ post }: { post: Post }) {
                 <header className="border-b">
                     <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
                         <Button asChild variant="ghost" size="sm">
-                            <Link href="/">
+                            <Link href="/blog">
                                 <ArrowLeft />
                                 Posts
                             </Link>
