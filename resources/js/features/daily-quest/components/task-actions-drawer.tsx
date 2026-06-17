@@ -77,9 +77,12 @@ export default function TaskActionsDrawer({
                                 className="justify-start rounded-2xl"
                                 onClick={() => {
                                     closeDrawer();
-                                    router.patch(
+                                    router.post(
                                         `/tasks/${taskId}/pause`,
-                                        { redirect_to: redirectTo },
+                                        {
+                                            _method: 'patch',
+                                            redirect_to: redirectTo,
+                                        },
                                         { preserveScroll: true },
                                     );
                                 }}
@@ -155,10 +158,16 @@ export default function TaskActionsDrawer({
                             onClick={() => {
                                 setConfirmDeleteOpen(false);
                                 closeDrawer();
-                                router.delete(`/tasks/${taskId}`, {
-                                    data: { redirect_to: redirectTo },
-                                    preserveScroll: true,
-                                });
+                                router.post(
+                                    `/tasks/${taskId}`,
+                                    {
+                                        _method: 'delete',
+                                        redirect_to: redirectTo,
+                                    },
+                                    {
+                                        preserveScroll: true,
+                                    },
+                                );
                             }}
                         >
                             Hapus task

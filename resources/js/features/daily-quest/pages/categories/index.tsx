@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
@@ -58,7 +58,6 @@ export default function DailyQuestCategoriesIndex({
     );
     const [deleteTarget, setDeleteTarget] = useState<TaskCategory | null>(null);
     const form = useForm<CategoryFormData>(toCategoryFormData());
-    const deleteForm = useForm({});
 
     const openCreate = () => {
         setEditingCategory(null);
@@ -76,10 +75,18 @@ export default function DailyQuestCategoriesIndex({
 
     const submit = () => {
         if (editingCategory) {
-            form.patch(`/categories/${dailyQuestId(editingCategory)}`, {
-                preserveScroll: true,
-                onSuccess: () => setDialogOpen(false),
-            });
+            router.post(
+                `/categories/${dailyQuestId(editingCategory)}`,
+                {
+                    ...form.data,
+                    _method: 'patch',
+                },
+                {
+                    preserveScroll: true,
+                    onError: (errors) => form.setError(errors),
+                    onSuccess: () => setDialogOpen(false),
+                },
+            );
 
             return;
         }
@@ -315,8 +322,9 @@ export default function DailyQuestCategoriesIndex({
                                     return;
                                 }
 
-                                deleteForm.delete(
+                                router.post(
                                     `/categories/${dailyQuestId(deleteTarget)}`,
+                                    { _method: 'delete' },
                                     {
                                         preserveScroll: true,
                                         onSuccess: () => setDeleteTarget(null),

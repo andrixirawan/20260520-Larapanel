@@ -165,6 +165,10 @@ export default function TaskForm({
                 payload.recurrence_ends_at = data.recurrence_ends_at || null;
             }
 
+            if (mode === 'edit') {
+                payload._method = 'patch';
+            }
+
             return payload;
         });
 
@@ -174,7 +178,7 @@ export default function TaskForm({
             return;
         }
 
-        form.patch(`/tasks/${dailyQuestId(task)}`, { preserveScroll: true });
+        form.post(`/tasks/${dailyQuestId(task)}`, { preserveScroll: true });
     };
 
     return (

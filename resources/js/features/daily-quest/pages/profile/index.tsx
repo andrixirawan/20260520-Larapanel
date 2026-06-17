@@ -25,10 +25,7 @@ import {
 } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import type { ProfileStats } from '@/features/daily-quest/types';
-import {
-    calculateXp,
-    profileHighlights,
-} from '@/features/daily-quest/utils';
+import { calculateXp, profileHighlights } from '@/features/daily-quest/utils';
 import { useInitials } from '@/hooks/use-initials';
 import type { Auth } from '@/types';
 
@@ -75,7 +72,8 @@ export default function DailyQuestProfileIndex({
         },
         {
             title: 'Account settings',
-            description: 'Masuk ke page settings Laravel untuk email, avatar, dan data akun.',
+            description:
+                'Masuk ke page settings Laravel untuk email, avatar, dan data akun.',
             href: '/settings/profile',
             icon: Settings,
         },
@@ -88,7 +86,12 @@ export default function DailyQuestProfileIndex({
     ];
 
     const submitDisplayName = () => {
-        form.patch('/daily-quest/profile/display-name', {
+        form.transform((data) => ({
+            ...data,
+            _method: 'patch',
+        }));
+
+        form.post('/daily-quest/profile/display-name', {
             preserveScroll: true,
             onSuccess: () => {
                 setNameDrawerOpen(false);
@@ -150,7 +153,7 @@ export default function DailyQuestProfileIndex({
                                     key={item.label}
                                     className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm"
                                 >
-                                    <p className="text-xs uppercase tracking-[0.18em] text-white/65">
+                                    <p className="text-xs tracking-[0.18em] text-white/65 uppercase">
                                         {item.label}
                                     </p>
                                     <p className="mt-2 text-2xl font-semibold">
@@ -167,7 +170,9 @@ export default function DailyQuestProfileIndex({
                         <CardContent className="space-y-4 px-5 py-5">
                             <div className="flex items-center gap-2">
                                 <Flame className="size-5 text-amber-500" />
-                                <p className="text-lg font-semibold">Momentum</p>
+                                <p className="text-lg font-semibold">
+                                    Momentum
+                                </p>
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="rounded-2xl border p-4">
@@ -204,7 +209,9 @@ export default function DailyQuestProfileIndex({
                                             <item.icon className="size-4" />
                                         </div>
                                         <div>
-                                            <p className="font-medium">{item.title}</p>
+                                            <p className="font-medium">
+                                                {item.title}
+                                            </p>
                                             <p className="text-sm text-muted-foreground">
                                                 {item.description}
                                             </p>
@@ -223,7 +230,8 @@ export default function DailyQuestProfileIndex({
                     <DrawerHeader className="text-left">
                         <DrawerTitle>Edit display name</DrawerTitle>
                         <DrawerDescription>
-                            Ubah nama yang tampil di halaman Daily Quest tanpa membuka settings page penuh.
+                            Ubah nama yang tampil di halaman Daily Quest tanpa
+                            membuka settings page penuh.
                         </DrawerDescription>
                     </DrawerHeader>
 

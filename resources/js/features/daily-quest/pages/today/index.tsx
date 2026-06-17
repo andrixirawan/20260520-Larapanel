@@ -83,9 +83,9 @@ export default function DailyQuestTodayIndex({
 
         setPendingIds((current) => [...current, instanceId]);
 
-        router.patch(
+        router.post(
             `/instances/${instanceId}/${willComplete ? 'complete' : 'uncomplete'}`,
-            { task_id: taskId },
+            { _method: 'patch', task_id: taskId },
             {
                 preserveScroll: true,
                 preserveState: false,
