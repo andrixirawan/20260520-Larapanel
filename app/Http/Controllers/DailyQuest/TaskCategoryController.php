@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DailyQuest\StoreTaskCategoryRequest;
 use App\Http\Resources\DailyQuest\TaskCategoryResource;
 use App\Models\DailyQuest\TaskCategory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -35,9 +37,9 @@ class TaskCategoryController extends Controller
         return back();
     }
 
-    public function update(StoreTaskCategoryRequest $request, TaskCategory $category): RedirectResponse
+    public function update(StoreTaskCategoryRequest $request, string $category): RedirectResponse
     {
-        abort_unless($category->user_id === $request->user()->id, 404);
+        $category = $this->resolveOwnedCategory($request, $category);
 
         $category->update($request->validated());
 
@@ -46,14 +48,32 @@ class TaskCategoryController extends Controller
         return back();
     }
 
-    public function destroy(Request $request, TaskCategory $category): RedirectResponse
+    public function destroy(Request $request, string $category): RedirectResponse
     {
-        abort_unless($category->user_id === $request->user()->id, 404);
+        $category = $this->resolveOwnedCategory($request, $category);
 
         $category->delete();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Category deleted.')]);
 
         return back();
+    }
+
+    private function resolveOwnedCategory(Request $request, string $identifier): TaskCategory
+    {
+        $category = $request->user()
+            ->categories()
+            ->where(function (Builder $query) use ($identifier): void {
+                $query->whereKey($identifier);
+
+                if (Schema::hasColumn('task_categories', 'public_id')) {
+                    $query->orWhere('public_id', $identifier);
+                }
+            })
+            ->first();
+
+        abort_unless($category instanceof TaskCategory, 404);
+
+        return $category;
     }
 }

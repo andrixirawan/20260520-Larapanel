@@ -12,6 +12,7 @@ use App\Models\DailyQuest\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -73,9 +74,9 @@ class TaskController extends Controller
         return $this->redirectAfterMutation($request);
     }
 
-    public function show(Request $request, Task $task): Response
+    public function show(Request $request, string $task): Response
     {
-        $this->ensureOwnedTask($request, $task);
+        $task = $this->resolveOwnedTask($request, $task);
 
         $task->load(['category', 'instances' => fn ($query) => $query->latest('scheduled_date')->limit(14)]);
 
@@ -85,9 +86,9 @@ class TaskController extends Controller
         ]);
     }
 
-    public function edit(Request $request, Task $task): Response
+    public function edit(Request $request, string $task): Response
     {
-        $this->ensureOwnedTask($request, $task);
+        $task = $this->resolveOwnedTask($request, $task);
         $task->load('category');
 
         return Inertia::render('daily-quest/tasks/edit', [
@@ -99,9 +100,9 @@ class TaskController extends Controller
         ]);
     }
 
-    public function update(UpdateTaskRequest $request, Task $task): RedirectResponse
+    public function update(UpdateTaskRequest $request, string $task): RedirectResponse
     {
-        $this->ensureOwnedTask($request, $task);
+        $task = $this->resolveOwnedTask($request, $task);
 
         $task->update($request->taskAttributes());
 
@@ -110,9 +111,9 @@ class TaskController extends Controller
         return $this->redirectAfterMutation($request);
     }
 
-    public function destroy(Request $request, Task $task): RedirectResponse
+    public function destroy(Request $request, string $task): RedirectResponse
     {
-        $this->ensureOwnedTask($request, $task);
+        $task = $this->resolveOwnedTask($request, $task);
 
         $task->delete();
 
@@ -121,9 +122,9 @@ class TaskController extends Controller
         return $this->redirectAfterMutation($request);
     }
 
-    public function pause(Request $request, Task $task): RedirectResponse
+    public function pause(Request $request, string $task): RedirectResponse
     {
-        $this->ensureOwnedTask($request, $task);
+        $task = $this->resolveOwnedTask($request, $task);
 
         abort_if($task->trashed(), 404);
 
@@ -141,9 +142,9 @@ class TaskController extends Controller
         return $this->redirectAfterMutation($request);
     }
 
-    public function duplicate(Request $request, Task $task): RedirectResponse
+    public function duplicate(Request $request, string $task): RedirectResponse
     {
-        $this->ensureOwnedTask($request, $task);
+        $task = $this->resolveOwnedTask($request, $task);
 
         $task->loadMissing('category');
 
@@ -164,9 +165,23 @@ class TaskController extends Controller
         return $this->redirectAfterMutation($request);
     }
 
-    private function ensureOwnedTask(Request $request, Task $task): void
+    private function resolveOwnedTask(Request $request, string $identifier): Task
     {
-        abort_unless($task->user_id === $request->user()->id, 404);
+        $task = $request->user()
+            ->tasks()
+            ->withTrashed()
+            ->where(function (Builder $query) use ($identifier): void {
+                $query->whereKey($identifier);
+
+                if (Schema::hasColumn('tasks', 'public_id')) {
+                    $query->orWhere('public_id', $identifier);
+                }
+            })
+            ->first();
+
+        abort_unless($task instanceof Task, 404);
+
+        return $task;
     }
 
     private function redirectAfterMutation(Request $request): RedirectResponse

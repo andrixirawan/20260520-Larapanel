@@ -5,15 +5,19 @@ namespace App\Http\Controllers\DailyQuest;
 use App\Http\Controllers\Controller;
 use App\Jobs\DailyQuest\UpdateUserStatsJob;
 use App\Models\DailyQuest\TaskInstance;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 class TaskInstanceController extends Controller
 {
-    public function complete(Request $request, TaskInstance $instance): RedirectResponse
+    public function complete(Request $request, string $instance): RedirectResponse
     {
+        $instance = $this->resolveOwnedInstance($request, $instance);
+
         $this->ensureOwnedAndMutable($request, $instance);
 
         DB::transaction(function () use ($request, $instance): void {
@@ -37,8 +41,10 @@ class TaskInstanceController extends Controller
         return back();
     }
 
-    public function uncomplete(Request $request, TaskInstance $instance): RedirectResponse
+    public function uncomplete(Request $request, string $instance): RedirectResponse
     {
+        $instance = $this->resolveOwnedInstance($request, $instance);
+
         $this->ensureOwnedAndMutable($request, $instance);
 
         DB::transaction(function () use ($instance): void {
@@ -60,6 +66,24 @@ class TaskInstanceController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Task marked as incomplete.')]);
 
         return back();
+    }
+
+    private function resolveOwnedInstance(Request $request, string $identifier): TaskInstance
+    {
+        $instance = $request->user()
+            ->taskInstances()
+            ->where(function (Builder $query) use ($identifier): void {
+                $query->whereKey($identifier);
+
+                if (Schema::hasColumn('task_instances', 'public_id')) {
+                    $query->orWhere('public_id', $identifier);
+                }
+            })
+            ->first();
+
+        abort_unless($instance instanceof TaskInstance, 404);
+
+        return $instance;
     }
 
     private function ensureOwnedAndMutable(Request $request, TaskInstance $instance): void
