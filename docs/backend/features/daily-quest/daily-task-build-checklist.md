@@ -346,12 +346,12 @@ App
 
 #### Phase 4 — History Page
 
-- [ ] Halaman `History/Index.tsx`
-- [ ] Komponen `CalendarHeatmap.tsx` (custom grid dengan dot warna completion)
-- [ ] Scroll ke section tanggal saat tap di kalender
-- [ ] List group per tanggal (instances + status + poin)
-- [ ] Filter history (kategori, rentang) via popover
-- [ ] Halaman `History/Show.tsx` (detail satu hari, navigasi dari heatmap)
+- [x] Halaman `History/Index.tsx`
+- [x] Komponen `CalendarHeatmap.tsx` (custom grid dengan dot warna completion)
+- [x] Scroll ke section tanggal saat tap di kalender
+- [x] List group per tanggal (instances + status + poin)
+- [x] Filter history (kategori, rentang) via popover
+- [x] Halaman `History/Show.tsx` (detail satu hari, navigasi dari heatmap)
 
 #### Phase 5 — Dashboard & Profile
 
@@ -477,11 +477,11 @@ App
 
 #### Histori
 
-- [ ] User bisa melihat task apa saja yang dikerjakan di tanggal tertentu
-- [ ] User bisa melihat status (selesai/tidak) per task per tanggal
-- [ ] User bisa melihat kalender dengan indikator completion rate per hari
-- [ ] Task yang sudah dihapus tetap terlihat di histori
-- [ ] User bisa memfilter histori per kategori
+- [x] User bisa melihat task apa saja yang dikerjakan di tanggal tertentu
+- [x] User bisa melihat status (selesai/tidak) per task per tanggal
+- [x] User bisa melihat kalender dengan indikator completion rate per hari
+- [x] Task yang sudah dihapus tetap terlihat di histori
+- [x] User bisa memfilter histori per kategori
 
 #### Gamifikasi
 
@@ -519,7 +519,7 @@ MVP tercapai ketika semua item berikut sudah berfungsi end-to-end:
 - [ ] Today screen: lihat dan centang task
 - [ ] Poin counter harian sederhana
 - [ ] Hapus task (soft-delete, tidak muncul lagi tapi histori aman)
-- [ ] History screen: lihat task per tanggal
+- [x] History screen: lihat task per tanggal
 - [ ] Streak counter sederhana
 
 ---

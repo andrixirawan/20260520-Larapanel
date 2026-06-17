@@ -1,6 +1,18 @@
-import { addDays, format, parseISO } from 'date-fns';
+import {
+    addDays,
+    eachDayOfInterval,
+    endOfMonth,
+    endOfWeek,
+    format,
+    isSameMonth,
+    parseISO,
+    startOfMonth,
+    startOfWeek,
+} from 'date-fns';
 import type {
     DailyQuestTask,
+    HistoryDay,
+    HistoryDaySummary,
     RecurrenceType,
     TaskCategory,
     TaskStatusTab,
@@ -130,4 +142,67 @@ export function categoryLabel(category: TaskCategory | null): string {
     }
 
     return `${category.icon ? `${category.icon} ` : ''}${category.name}`;
+}
+
+export function formatHistoryDayLabel(date: string): string {
+    return new Intl.DateTimeFormat('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    }).format(new Date(`${date}T00:00:00`));
+}
+
+export function formatHistoryMonthLabel(month: string): string {
+    return new Intl.DateTimeFormat('id-ID', {
+        month: 'long',
+        year: 'numeric',
+    }).format(new Date(`${month}-01T00:00:00`));
+}
+
+export function completionTone(summary: HistoryDaySummary | null): string {
+    if (! summary || summary.total_tasks === 0) {
+        return 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400';
+    }
+
+    if (summary.completion_rate === 100) {
+        return 'bg-emerald-500 text-white';
+    }
+
+    if (summary.completion_rate >= 50) {
+        return 'bg-amber-400 text-slate-950';
+    }
+
+    return 'bg-rose-400 text-white';
+}
+
+export function historyDaySummaries(days: HistoryDay[]): HistoryDaySummary[] {
+    return days
+        .map((day) => day.summary)
+        .filter((summary): summary is HistoryDaySummary => summary.date !== null);
+}
+
+export function historyMonthOptions(days: HistoryDay[]): string[] {
+    return Array.from(
+        new Set(
+            historyDaySummaries(days).map((summary) =>
+                summary.date ? summary.date.slice(0, 7) : '',
+            ),
+        ),
+    )
+        .filter((value) => value !== '')
+        .sort()
+        .reverse();
+}
+
+export function buildHeatmapMonthDays(month: string): Date[] {
+    const anchor = parseISO(`${month}-01`);
+    const from = startOfWeek(startOfMonth(anchor), { weekStartsOn: 1 });
+    const to = endOfWeek(endOfMonth(anchor), { weekStartsOn: 1 });
+
+    return eachDayOfInterval({ start: from, end: to });
+}
+
+export function isWithinVisibleMonth(date: Date, month: string): boolean {
+    return isSameMonth(date, parseISO(`${month}-01`));
 }

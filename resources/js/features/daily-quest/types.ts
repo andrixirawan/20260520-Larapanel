@@ -52,3 +52,23 @@ export type TodayStats = {
     points_earned: number;
     completion_rate: number;
 };
+
+export type HistoryDaySummary = {
+    date: string | null;
+    total_tasks: number;
+    completed_tasks: number;
+    points_earned: number;
+    completion_rate: number;
+};
+
+export type HistoryDay = {
+    summary: HistoryDaySummary;
+    instances: TaskInstance[];
+};
+
+export type HistoryFilters = {
+    task_public_id?: string;
+    category_public_id?: string;
+    from?: string;
+    to?: string;
+};
