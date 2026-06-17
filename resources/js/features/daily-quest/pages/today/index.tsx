@@ -28,6 +28,8 @@ import TaskInstanceOptionsDrawer from '@/features/daily-quest/components/task-in
 import TaskItem from '@/features/daily-quest/components/task-item';
 import type { TaskInstance, TodayStats } from '@/features/daily-quest/types';
 import { dailyQuestId } from '@/features/daily-quest/utils';
+import { post as completeInstance } from '@/routes/instances/complete';
+import { post as uncompleteInstance } from '@/routes/instances/uncomplete';
 
 type TodayPageProps = {
     date: string;
@@ -71,20 +73,34 @@ export default function DailyQuestTodayIndex({
         currentStats.total_tasks > 0 &&
         currentStats.completed_tasks === currentStats.total_tasks;
 
-    const toggleInstance = (instance: TaskInstance) => {
-        const instanceId = dailyQuestId(instance);
-        const taskId = instance.task_id || dailyQuestId(instance.task);
+    const completionActionUrl = (instance: TaskInstance) => {
+        const action =
+            instance.completed_at === null
+                ? completeInstance
+                : uncompleteInstance;
 
-        if (!instanceId || pendingIds.includes(instanceId)) {
+        return action.url(dailyQuestId(instance));
+    };
+
+    const toggleInstance = (instance: TaskInstance, formData: FormData) => {
+        const instanceId = dailyQuestId(instance);
+        const submittedTaskId = formData.get('task_id');
+        const taskId =
+            (typeof submittedTaskId === 'string' ? submittedTaskId : '') ||
+            instance.task_id ||
+            dailyQuestId(instance.task);
+
+        if (!instanceId || !taskId || pendingIds.includes(instanceId)) {
             return;
         }
 
         const willComplete = instance.completed_at === null;
+        const action = willComplete ? completeInstance : uncompleteInstance;
 
         setPendingIds((current) => [...current, instanceId]);
 
         router.post(
-            `/instances/${instanceId}/${willComplete ? 'complete' : 'uncomplete'}`,
+            action.url(instanceId),
             { task_id: taskId },
             {
                 preserveScroll: true,
@@ -241,6 +257,9 @@ export default function DailyQuestTodayIndex({
                                     <TaskItem
                                         key={dailyQuestId(instance)}
                                         instance={instance}
+                                        actionUrl={completionActionUrl(
+                                            instance,
+                                        )}
                                         busy={pendingIds.includes(
                                             dailyQuestId(instance),
                                         )}
@@ -290,6 +309,9 @@ export default function DailyQuestTodayIndex({
                                     <TaskItem
                                         key={dailyQuestId(instance)}
                                         instance={instance}
+                                        actionUrl={completionActionUrl(
+                                            instance,
+                                        )}
                                         busy={pendingIds.includes(
                                             dailyQuestId(instance),
                                         )}

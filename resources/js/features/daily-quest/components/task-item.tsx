@@ -1,21 +1,23 @@
-import { EllipsisVertical, Sparkles } from 'lucide-react';
+import { Check, EllipsisVertical, Sparkles } from 'lucide-react';
 import { useRef } from 'react';
+import type { FormEvent } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
 import type { TaskInstance } from '@/features/daily-quest/types';
+import { cn } from '@/lib/utils';
 
 type TaskItemProps = {
     instance: TaskInstance;
+    actionUrl: string;
     busy?: boolean;
-    onToggle: (instance: TaskInstance) => void;
+    onToggle: (instance: TaskInstance, formData: FormData) => void;
     onOpenOptions: (instance: TaskInstance) => void;
 };
 
 export default function TaskItem({
     instance,
+    actionUrl,
     busy = false,
     onToggle,
     onOpenOptions,
@@ -44,6 +46,22 @@ export default function TaskItem({
         clearLongPress();
     };
 
+    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        if (busy) {
+            return;
+        }
+
+        if (longPressTriggeredRef.current) {
+            longPressTriggeredRef.current = false;
+
+            return;
+        }
+
+        onToggle(instance, new FormData(event.currentTarget));
+    };
+
     return (
         <Card
             className={cn(
@@ -62,25 +80,32 @@ export default function TaskItem({
             onPointerLeave={handlePointerUp}
             onPointerCancel={handlePointerUp}
         >
-            <div className="flex items-center gap-3 p-4">
-                <Checkbox
-                    checked={isCompleted}
-                    disabled={busy}
-                    onCheckedChange={() => {
-                        if (longPressTriggeredRef.current) {
-                            longPressTriggeredRef.current = false;
-                            return;
-                        }
+            <form
+                action={actionUrl}
+                method="post"
+                className="flex items-center gap-3 p-4"
+                onSubmit={handleSubmit}
+            >
+                <input
+                    type="hidden"
+                    name="task_id"
+                    value={instance.task_id || instance.task?.id || ''}
+                />
 
-                        onToggle(instance);
-                    }}
+                <button
+                    type="submit"
+                    disabled={busy}
+                    aria-pressed={isCompleted}
                     aria-label={`Toggle ${instance.task?.name ?? 'task'}`}
                     className={cn(
-                        'mt-0.5 size-5 rounded-full border-2',
-                        isCompleted &&
-                            'border-emerald-500 bg-emerald-500 text-white',
+                        'mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-2 transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60',
+                        isCompleted
+                            ? 'border-emerald-500 bg-emerald-500 text-white'
+                            : 'border-slate-300 bg-white text-transparent hover:border-emerald-400 dark:border-slate-600 dark:bg-neutral-950',
                     )}
-                />
+                >
+                    <Check className="size-3.5" />
+                </button>
 
                 <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-3">
@@ -89,7 +114,9 @@ export default function TaskItem({
                             style={{
                                 backgroundColor:
                                     instance.task?.color ?? '#f3f4f6',
-                                color: instance.task?.color ? '#ffffff' : '#111827',
+                                color: instance.task?.color
+                                    ? '#ffffff'
+                                    : '#111827',
                             }}
                         >
                             {instance.task?.icon ?? '✨'}
@@ -116,14 +143,16 @@ export default function TaskItem({
                                         </p>
                                     ) : (
                                         <p className="truncate text-xs text-muted-foreground">
-                                            {instance.task?.recurrence_summary ??
-                                                'Task'}
+                                            {instance.task
+                                                ?.recurrence_summary ?? 'Task'}
                                         </p>
                                     )}
                                 </div>
 
                                 <Badge
-                                    variant={isCompleted ? 'secondary' : 'outline'}
+                                    variant={
+                                        isCompleted ? 'secondary' : 'outline'
+                                    }
                                     className="rounded-full px-2.5 py-1"
                                 >
                                     <Sparkles className="size-3" />
@@ -149,7 +178,7 @@ export default function TaskItem({
                 >
                     <EllipsisVertical className="size-4" />
                 </Button>
-            </div>
+            </form>
         </Card>
     );
 }
