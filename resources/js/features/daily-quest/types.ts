@@ -38,6 +38,7 @@ export type DailyQuestTask = {
 
 export type TaskInstance = {
     id: string;
+    task_id: string;
     scheduled_date: string;
     completed_at: string | null;
     points_awarded: number | null;

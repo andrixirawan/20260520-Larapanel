@@ -9,6 +9,7 @@ use App\Http\Resources\DailyQuest\TaskCategoryResource;
 use App\Http\Resources\DailyQuest\TaskInstanceResource;
 use App\Http\Resources\DailyQuest\TaskResource;
 use App\Models\DailyQuest\Task;
+use App\Services\DailyQuest\TaskSchedulerService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,10 @@ use Inertia\Response;
 
 class TaskController extends Controller
 {
+    public function __construct(
+        private readonly TaskSchedulerService $taskSchedulerService,
+    ) {}
+
     public function index(Request $request): Response
     {
         $status = $request->string('status')->toString() ?: 'active';
@@ -67,6 +72,11 @@ class TaskController extends Controller
     public function store(StoreTaskRequest $request): RedirectResponse
     {
         $request->user()->tasks()->create($request->taskAttributes());
+
+        $this->taskSchedulerService->generateForDate(
+            $request->user(),
+            now($request->user()->timezone)->startOfDay(),
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Task created.')]);
 

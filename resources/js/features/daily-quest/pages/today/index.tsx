@@ -73,6 +73,7 @@ export default function DailyQuestTodayIndex({
 
     const toggleInstance = (instance: TaskInstance) => {
         const instanceId = dailyQuestId(instance);
+        const taskId = instance.task_id || dailyQuestId(instance.task);
 
         if (!instanceId || pendingIds.includes(instanceId)) {
             return;
@@ -84,7 +85,7 @@ export default function DailyQuestTodayIndex({
 
         router.patch(
             `/instances/${instanceId}/${willComplete ? 'complete' : 'uncomplete'}`,
-            {},
+            { task_id: taskId },
             {
                 preserveScroll: true,
                 preserveState: false,

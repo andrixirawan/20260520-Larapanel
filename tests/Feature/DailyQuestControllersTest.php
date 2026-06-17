@@ -62,6 +62,8 @@ test('authenticated user can manage task categories', function () {
 });
 
 test('authenticated user can create update and archive tasks', function () {
+    Carbon::setTestNow('2026-06-17 08:00:00');
+
     $user = User::factory()->create();
     $category = $user->categories()->create([
         'name' => 'Study',
@@ -84,6 +86,12 @@ test('authenticated user can create update and archive tasks', function () {
         ->assertRedirect(route('tasks.index'));
 
     $task = Task::query()->firstOrFail();
+
+    $this->assertDatabaseHas('task_instances', [
+        'task_id' => $task->id,
+        'user_id' => $user->id,
+        'scheduled_date' => '2026-06-17 00:00:00',
+    ]);
 
     $this->actingAs($user)
         ->get(route('tasks.index'))
@@ -186,6 +194,7 @@ test('today page returns todays instances and completion stats', function () {
             ->where('date', '2026-06-17')
             ->where('stats.total_tasks', 1)
             ->where('stats.completed_tasks', 1)
+            ->where('instances.0.task_id', $task->id)
             ->where('instances.0.task.name', 'Morning run')
         );
 });
@@ -231,7 +240,9 @@ test('today task instance completion also accepts the task id for todays instanc
     ]);
 
     $this->actingAs($user)
-        ->patch("/instances/{$task->id}/complete")
+        ->patch('/instances/not-the-instance-id/complete', [
+            'task_id' => $task->id,
+        ])
         ->assertRedirect();
 
     $instance = TaskInstance::query()

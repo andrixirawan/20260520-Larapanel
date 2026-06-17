@@ -18,6 +18,7 @@ class TaskInstanceResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'task_id' => $this->task_id,
             'scheduled_date' => $this->scheduled_date?->toDateString(),
             'completed_at' => $this->completed_at?->toIso8601String(),
             'points_awarded' => $this->points_awarded,

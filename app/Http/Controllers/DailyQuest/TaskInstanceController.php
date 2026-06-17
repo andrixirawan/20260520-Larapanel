@@ -69,10 +69,11 @@ class TaskInstanceController extends Controller
     private function resolveOwnedInstance(Request $request, string $identifier): TaskInstance
     {
         $today = now($request->user()->timezone)->toDateString();
+        $taskId = $request->string('task_id')->toString();
 
         $instance = $request->user()
             ->taskInstances()
-            ->where(function ($query) use ($identifier, $today): void {
+            ->where(function ($query) use ($identifier, $taskId, $today): void {
                 $query
                     ->whereKey($identifier)
                     ->orWhere(function ($query) use ($identifier, $today): void {
@@ -80,6 +81,14 @@ class TaskInstanceController extends Controller
                             ->where('task_id', $identifier)
                             ->whereDate('scheduled_date', $today);
                     });
+
+                if ($taskId !== '') {
+                    $query->orWhere(function ($query) use ($taskId, $today): void {
+                        $query
+                            ->where('task_id', $taskId)
+                            ->whereDate('scheduled_date', $today);
+                    });
+                }
             })
             ->first();
 
