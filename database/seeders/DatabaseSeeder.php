@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use Database\Seeders\DailyQuest\DailyQuestDemoSeeder;
 use Database\Seeders\Post\PostSeeder;
 use Database\Seeders\User\UserSeeder;
 use Illuminate\Database\Seeder;
@@ -17,6 +18,7 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             UserSeeder::class,
             PostSeeder::class,
+            DailyQuestDemoSeeder::class,
         ]);
     }
 }
