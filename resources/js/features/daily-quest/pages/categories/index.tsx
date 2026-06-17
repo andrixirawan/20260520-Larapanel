@@ -76,11 +76,8 @@ export default function DailyQuestCategoriesIndex({
     const submit = () => {
         if (editingCategory) {
             router.post(
-                `/categories/${dailyQuestId(editingCategory)}`,
-                {
-                    ...form.data,
-                    _method: 'patch',
-                },
+                `/categories/${dailyQuestId(editingCategory)}/update`,
+                form.data,
                 {
                     preserveScroll: true,
                     onError: (errors) => form.setError(errors),
@@ -323,8 +320,8 @@ export default function DailyQuestCategoriesIndex({
                                 }
 
                                 router.post(
-                                    `/categories/${dailyQuestId(deleteTarget)}`,
-                                    { _method: 'delete' },
+                                    `/categories/${dailyQuestId(deleteTarget)}/delete`,
+                                    {},
                                     {
                                         preserveScroll: true,
                                         onSuccess: () => setDeleteTarget(null),

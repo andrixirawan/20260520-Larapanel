@@ -79,10 +79,7 @@ export default function TaskActionsDrawer({
                                     closeDrawer();
                                     router.post(
                                         `/tasks/${taskId}/pause`,
-                                        {
-                                            _method: 'patch',
-                                            redirect_to: redirectTo,
-                                        },
+                                        { redirect_to: redirectTo },
                                         { preserveScroll: true },
                                     );
                                 }}
@@ -159,11 +156,8 @@ export default function TaskActionsDrawer({
                                 setConfirmDeleteOpen(false);
                                 closeDrawer();
                                 router.post(
-                                    `/tasks/${taskId}`,
-                                    {
-                                        _method: 'delete',
-                                        redirect_to: redirectTo,
-                                    },
+                                    `/tasks/${taskId}/delete`,
+                                    { redirect_to: redirectTo },
                                     {
                                         preserveScroll: true,
                                     },

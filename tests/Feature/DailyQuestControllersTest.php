@@ -143,7 +143,7 @@ test('authenticated user can pause and duplicate tasks', function () {
     ]);
 
     $this->actingAs($user)
-        ->patch(route('tasks.pause', $task), [
+        ->post(route('tasks.pause.post', $task), [
             'redirect_to' => '/tasks?status=active',
         ])
         ->assertRedirect('/tasks?status=active');
@@ -212,14 +212,14 @@ test('task instances can be completed and uncompleted for today only', function 
     ]);
 
     $this->actingAs($user)
-        ->patch("/instances/{$instance->id}/complete")
+        ->post(route('instances.complete.post', $instance))
         ->assertRedirect();
 
     expect($instance->fresh()->points_awarded)->toBe(25)
         ->and($user->fresh()->total_points)->toBe(25);
 
     $this->actingAs($user)
-        ->patch("/instances/{$instance->id}/uncomplete")
+        ->post(route('instances.uncomplete.post', $instance))
         ->assertRedirect();
 
     expect($instance->fresh()->completed_at)->toBeNull()
@@ -240,7 +240,7 @@ test('today task instance completion also accepts the task id for todays instanc
     ]);
 
     $this->actingAs($user)
-        ->patch('/instances/not-the-instance-id/complete', [
+        ->post(route('instances.complete.post', 'not-the-instance-id'), [
             'task_id' => $task->id,
         ])
         ->assertRedirect();
@@ -252,6 +252,89 @@ test('today task instance completion also accepts the task id for todays instanc
 
     expect($instance->completed_at)->not->toBeNull()
         ->and($instance->points_awarded)->toBe(30);
+});
+
+test('browser post endpoints mutate daily quest resources without method spoofing', function () {
+    Carbon::setTestNow('2026-06-17 08:00:00');
+
+    $user = User::factory()->create(['timezone' => 'Asia/Jakarta']);
+    $category = $user->categories()->create([
+        'name' => 'Focus',
+        'color' => '#0f766e',
+        'icon' => 'F',
+    ]);
+    $deleteCategory = $user->categories()->create([
+        'name' => 'Delete me',
+        'color' => '#dc2626',
+        'icon' => 'D',
+    ]);
+    $task = makeDailyQuestTask($user, [
+        'category_id' => $category->id,
+        'name' => 'Deep work',
+        'points' => 40,
+    ]);
+    $instance = TaskInstance::query()->create([
+        'task_id' => $task->id,
+        'user_id' => $user->id,
+        'scheduled_date' => '2026-06-17',
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('instances.complete.post', $instance), [
+            'task_id' => $task->id,
+        ])
+        ->assertRedirect();
+
+    expect($instance->fresh()->completed_at)->not->toBeNull();
+
+    $this->actingAs($user)
+        ->post(route('tasks.pause.post', $task), [
+            'redirect_to' => '/today',
+        ])
+        ->assertRedirect('/today');
+
+    expect($task->fresh()->is_active)->toBeFalse();
+
+    $this->actingAs($user)
+        ->post(route('tasks.update.post', $task), [
+            'name' => 'Deep work updated',
+            'description' => 'No meetings.',
+            'icon' => 'W',
+            'color' => '#0ea5e9',
+            'points' => 45,
+            'category_id' => $category->id,
+            'recurrence_type' => 'daily',
+            'recurrence_days' => [],
+            'is_active' => true,
+            'redirect_to' => '/tasks',
+        ])
+        ->assertRedirect('/tasks');
+
+    expect($task->fresh()->name)->toBe('Deep work updated');
+
+    $this->actingAs($user)
+        ->post(route('categories.update.post', $category), [
+            'name' => 'Focus Updated',
+            'color' => '#14b8a6',
+            'icon' => 'U',
+        ])
+        ->assertRedirect();
+
+    expect($category->fresh()->name)->toBe('Focus Updated');
+
+    $this->actingAs($user)
+        ->post(route('categories.destroy.post', $deleteCategory))
+        ->assertRedirect();
+
+    expect(TaskCategory::query()->whereKey($deleteCategory->id)->exists())->toBeFalse();
+
+    $this->actingAs($user)
+        ->post(route('tasks.destroy.post', $task), [
+            'redirect_to' => '/tasks?status=active',
+        ])
+        ->assertRedirect('/tasks?status=active');
+
+    expect($task->fresh()->trashed())->toBeTrue();
 });
 
 test('history and dashboard pages expose daily quest summaries', function () {
@@ -338,7 +421,7 @@ test('daily quest profile page renders and display name can be updated', functio
         );
 
     $this->actingAs($user)
-        ->patch(route('daily-quest.profile.display-name'), [
+        ->post(route('daily-quest.profile.display-name.post'), [
             'name' => 'New Name',
         ])
         ->assertRedirect(route('daily-quest.profile'));

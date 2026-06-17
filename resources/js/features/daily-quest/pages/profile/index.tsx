@@ -86,11 +86,6 @@ export default function DailyQuestProfileIndex({
     ];
 
     const submitDisplayName = () => {
-        form.transform((data) => ({
-            ...data,
-            _method: 'patch',
-        }));
-
         form.post('/daily-quest/profile/display-name', {
             preserveScroll: true,
             onSuccess: () => {

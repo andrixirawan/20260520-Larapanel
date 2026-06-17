@@ -85,7 +85,7 @@ export default function DailyQuestTodayIndex({
 
         router.post(
             `/instances/${instanceId}/${willComplete ? 'complete' : 'uncomplete'}`,
-            { _method: 'patch', task_id: taskId },
+            { task_id: taskId },
             {
                 preserveScroll: true,
                 preserveState: false,

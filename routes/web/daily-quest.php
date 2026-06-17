@@ -13,14 +13,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('today', [TodayController::class, 'index'])->name('today');
-    Route::patch('instances/{instance}/complete', [TaskInstanceController::class, 'complete'])->name('instances.complete');
-    Route::patch('instances/{instance}/uncomplete', [TaskInstanceController::class, 'uncomplete'])->name('instances.uncomplete');
+    Route::post('instances/{instance}/complete', [TaskInstanceController::class, 'complete'])->name('instances.complete.post');
+    Route::post('instances/{instance}/uncomplete', [TaskInstanceController::class, 'uncomplete'])->name('instances.uncomplete.post');
 
-    Route::patch('tasks/{task}/pause', [TaskController::class, 'pause'])->name('tasks.pause');
+    Route::post('tasks/{task}/pause', [TaskController::class, 'pause'])->name('tasks.pause.post');
     Route::post('tasks/{task}/duplicate', [TaskController::class, 'duplicate'])->name('tasks.duplicate');
     Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
     Route::post('tasks', [TaskController::class, 'store'])->name('tasks.store');
     Route::get('tasks/create', [TaskController::class, 'create'])->name('tasks.create');
+    Route::post('tasks/{task}/update', [TaskController::class, 'update'])->name('tasks.update.post');
+    Route::post('tasks/{task}/delete', [TaskController::class, 'destroy'])->name('tasks.destroy.post');
     Route::get('tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
     Route::match(['put', 'patch'], 'tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
@@ -30,10 +32,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('history/{date}', [HistoryController::class, 'show'])->name('history.show');
 
     Route::get('daily-quest/profile', [ProfileController::class, 'index'])->name('daily-quest.profile');
-    Route::patch('daily-quest/profile/display-name', [ProfileController::class, 'updateDisplayName'])->name('daily-quest.profile.display-name');
+    Route::post('daily-quest/profile/display-name', [ProfileController::class, 'updateDisplayName'])->name('daily-quest.profile.display-name.post');
 
     Route::get('categories', [TaskCategoryController::class, 'index'])->name('categories.index');
     Route::post('categories', [TaskCategoryController::class, 'store'])->name('categories.store');
+    Route::post('categories/{category}/update', [TaskCategoryController::class, 'update'])->name('categories.update.post');
+    Route::post('categories/{category}/delete', [TaskCategoryController::class, 'destroy'])->name('categories.destroy.post');
     Route::match(['put', 'patch'], 'categories/{category}', [TaskCategoryController::class, 'update'])->name('categories.update');
     Route::delete('categories/{category}', [TaskCategoryController::class, 'destroy'])->name('categories.destroy');
 });
