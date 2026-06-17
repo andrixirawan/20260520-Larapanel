@@ -1,0 +1,1 @@
+import{n as e,t}from"./app-CJOJewSX.js";var n=new Intl.NumberFormat(t,{style:`currency`,currency:`IDR`,maximumFractionDigits:0});function r(n){return n?new Date(n).toLocaleString(t,e):`-`}function i(e){let t=Object.values(e)[0];return Array.isArray(t)?t[0]??`Request failed.`:t??`Request failed.`}export{r as n,n as r,i as t};
