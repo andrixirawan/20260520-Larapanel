@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpen,
     Boxes,
+    CheckSquare,
     Clock3,
     FileText,
     FolderGit2,
@@ -47,6 +48,33 @@ export function AppSidebar() {
             title: 'Dashboard',
             href: dashboard(),
             icon: LayoutGrid,
+        },
+        {
+            title: 'Daily Quest',
+            href: '/today',
+            icon: CheckSquare,
+            items: [
+                {
+                    title: 'Today',
+                    href: '/today',
+                },
+                {
+                    title: 'Dashboard',
+                    href: '/dashboard',
+                },
+                {
+                    title: 'History',
+                    href: '/history',
+                },
+                {
+                    title: 'Tasks',
+                    href: '/tasks',
+                },
+                {
+                    title: 'Categories',
+                    href: '/categories',
+                },
+            ],
         },
         {
             title: 'Posts',
