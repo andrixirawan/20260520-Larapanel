@@ -2,15 +2,15 @@
 
 namespace App\Models\DailyQuest;
 
-use App\Models\Concerns\HasPublicId;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TaskInstance extends Model
 {
-    use HasFactory, HasPublicId;
+    use HasFactory, HasUlids;
 
     /**
      * @var array<int, string>

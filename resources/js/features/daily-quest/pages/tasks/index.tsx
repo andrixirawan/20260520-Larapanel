@@ -30,11 +30,16 @@ export default function DailyQuestTasksIndex({
     filters,
     categories,
 }: TasksIndexProps) {
-    const [selectedTask, setSelectedTask] = useState<DailyQuestTask | null>(null);
+    const [selectedTask, setSelectedTask] = useState<DailyQuestTask | null>(
+        null,
+    );
     const [drawerOpen, setDrawerOpen] = useState(false);
     const activeStatus = filters.status ?? 'active';
     const emptyStateCopy = taskStatusMeta[activeStatus];
-    const listCountLabel = useMemo(() => `${tasks.length} task`, [tasks.length]);
+    const listCountLabel = useMemo(
+        () => `${tasks.length} task`,
+        [tasks.length],
+    );
 
     return (
         <>
@@ -47,50 +52,56 @@ export default function DailyQuestTasksIndex({
                         description="Kelola semua task dari daftar aktif, dijeda, dan arsip tanpa meninggalkan pola mobile-first."
                     />
 
-                    <Badge variant="outline" className="rounded-full px-3 py-1.5">
+                    <Badge
+                        variant="outline"
+                        className="rounded-full px-3 py-1.5"
+                    >
                         {categories.length} kategori
                     </Badge>
                 </div>
 
                 <section className="space-y-4 rounded-[2rem] border bg-card/90 p-4 shadow-sm">
                     <div className="flex flex-wrap gap-2">
-                        {(Object.keys(taskStatusMeta) as TaskStatusTab[]).map((status) => {
-                            const meta = taskStatusMeta[status];
-                            const active = activeStatus === status;
+                        {(Object.keys(taskStatusMeta) as TaskStatusTab[]).map(
+                            (status) => {
+                                const meta = taskStatusMeta[status];
+                                const active = activeStatus === status;
 
-                            return (
-                                <Button
-                                    key={status}
-                                    type="button"
-                                    variant={active ? 'default' : 'outline'}
-                                    className="rounded-full"
-                                    onClick={() =>
-                                        router.get(
-                                            '/tasks',
-                                            { status },
-                                            {
-                                                preserveScroll: true,
-                                                preserveState: true,
-                                            },
-                                        )
-                                    }
-                                >
-                                    {meta.label}
-                                    {active ? (
-                                        <Badge
-                                            variant="secondary"
-                                            className="ml-1 rounded-full"
-                                        >
-                                            {tasks.length}
-                                        </Badge>
-                                    ) : null}
-                                </Button>
-                            );
-                        })}
+                                return (
+                                    <Button
+                                        key={status}
+                                        type="button"
+                                        variant={active ? 'default' : 'outline'}
+                                        className="rounded-full"
+                                        onClick={() =>
+                                            router.get(
+                                                '/tasks',
+                                                { status },
+                                                {
+                                                    preserveScroll: true,
+                                                    preserveState: true,
+                                                },
+                                            )
+                                        }
+                                    >
+                                        {meta.label}
+                                        {active ? (
+                                            <Badge
+                                                variant="secondary"
+                                                className="ml-1 rounded-full"
+                                            >
+                                                {tasks.length}
+                                            </Badge>
+                                        ) : null}
+                                    </Button>
+                                );
+                            },
+                        )}
                     </div>
 
                     <p className="text-sm text-muted-foreground">
-                        {emptyStateCopy.description} {listCountLabel} pada tab ini.
+                        {emptyStateCopy.description} {listCountLabel} pada tab
+                        ini.
                     </p>
                 </section>
 
@@ -117,7 +128,7 @@ export default function DailyQuestTasksIndex({
                     <div className="space-y-4">
                         {tasks.map((task) => (
                             <TaskCard
-                                key={task.public_id}
+                                key={task.id}
                                 task={task}
                                 onOpenActions={(nextTask) => {
                                     setSelectedTask(nextTask);
@@ -145,7 +156,10 @@ export default function DailyQuestTasksIndex({
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}
                 task={selectedTask}
-                redirectTo={buildTaskRedirectPath(activeStatus, filters.search ?? '')}
+                redirectTo={buildTaskRedirectPath(
+                    activeStatus,
+                    filters.search ?? '',
+                )}
             />
         </>
     );

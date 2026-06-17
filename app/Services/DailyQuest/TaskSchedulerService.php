@@ -8,7 +8,6 @@ use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 class TaskSchedulerService
 {
@@ -42,7 +41,6 @@ class TaskSchedulerService
                 'task_id' => $task->id,
                 'scheduled_date' => $scheduledDate->toDateString(),
                 'user_id' => $user->id,
-                'public_id' => (string) Str::ulid(),
             ]);
 
             if ($instance->exists) {

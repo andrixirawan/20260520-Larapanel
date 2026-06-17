@@ -3,11 +3,26 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ColorPicker from '@/features/daily-quest/components/color-picker';
@@ -37,7 +52,9 @@ export default function DailyQuestCategoriesIndex({
 }: CategoriesPageProps) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [emojiOpen, setEmojiOpen] = useState(false);
-    const [editingCategory, setEditingCategory] = useState<TaskCategory | null>(null);
+    const [editingCategory, setEditingCategory] = useState<TaskCategory | null>(
+        null,
+    );
     const [deleteTarget, setDeleteTarget] = useState<TaskCategory | null>(null);
     const form = useForm<CategoryFormData>(toCategoryFormData());
     const deleteForm = useForm({});
@@ -58,7 +75,7 @@ export default function DailyQuestCategoriesIndex({
 
     const submit = () => {
         if (editingCategory) {
-            form.patch(`/categories/${editingCategory.public_id}`, {
+            form.patch(`/categories/${editingCategory.id}`, {
                 preserveScroll: true,
                 onSuccess: () => setDialogOpen(false),
             });
@@ -83,7 +100,11 @@ export default function DailyQuestCategoriesIndex({
                         description="Kelola kategori agar task lebih cepat dikenali lewat ikon, warna, dan grouping yang konsisten."
                     />
 
-                    <Button type="button" className="rounded-full" onClick={openCreate}>
+                    <Button
+                        type="button"
+                        className="rounded-full"
+                        onClick={openCreate}
+                    >
                         <Plus className="size-4" />
                         Tambah kategori
                     </Button>
@@ -92,9 +113,12 @@ export default function DailyQuestCategoriesIndex({
                 {categories.length === 0 ? (
                     <Card className="rounded-[2rem] border border-dashed py-0 shadow-sm">
                         <CardContent className="px-5 py-8 sm:px-6">
-                            <p className="text-lg font-semibold">Belum ada kategori</p>
+                            <p className="text-lg font-semibold">
+                                Belum ada kategori
+                            </p>
                             <p className="mt-2 text-sm text-muted-foreground">
-                                Mulai dari kategori sederhana seperti Health, Focus, atau Learning.
+                                Mulai dari kategori sederhana seperti Health,
+                                Focus, atau Learning.
                             </p>
                         </CardContent>
                     </Card>
@@ -102,7 +126,7 @@ export default function DailyQuestCategoriesIndex({
                     <div className="grid gap-4 md:grid-cols-2">
                         {categories.map((category) => (
                             <Card
-                                key={category.public_id}
+                                key={category.id}
                                 className="rounded-[2rem] border bg-card/90 py-0 shadow-sm"
                             >
                                 <CardContent className="space-y-4 px-5 py-5">
@@ -112,7 +136,8 @@ export default function DailyQuestCategoriesIndex({
                                                 className="flex size-12 items-center justify-center rounded-2xl text-xl text-white"
                                                 style={{
                                                     backgroundColor:
-                                                        category.color ?? '#0f172a',
+                                                        category.color ??
+                                                        '#0f172a',
                                                 }}
                                             >
                                                 {category.icon ?? '🗂️'}
@@ -123,7 +148,8 @@ export default function DailyQuestCategoriesIndex({
                                                     {category.name}
                                                 </p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {category.tasks_count ?? 0} task
+                                                    {category.tasks_count ?? 0}{' '}
+                                                    task
                                                 </p>
                                             </div>
                                         </div>
@@ -134,7 +160,9 @@ export default function DailyQuestCategoriesIndex({
                                                 variant="outline"
                                                 size="icon"
                                                 className="rounded-full"
-                                                onClick={() => openEdit(category)}
+                                                onClick={() =>
+                                                    openEdit(category)
+                                                }
                                             >
                                                 <Pencil className="size-4" />
                                             </Button>
@@ -143,7 +171,9 @@ export default function DailyQuestCategoriesIndex({
                                                 variant="outline"
                                                 size="icon"
                                                 className="rounded-full text-red-600 hover:text-red-700"
-                                                onClick={() => setDeleteTarget(category)}
+                                                onClick={() =>
+                                                    setDeleteTarget(category)
+                                                }
                                             >
                                                 <Trash2 className="size-4" />
                                             </Button>
@@ -151,10 +181,16 @@ export default function DailyQuestCategoriesIndex({
                                     </div>
 
                                     <div className="flex flex-wrap gap-2">
-                                        <Badge variant="outline" className="rounded-full">
+                                        <Badge
+                                            variant="outline"
+                                            className="rounded-full"
+                                        >
                                             {category.color || 'Tanpa warna'}
                                         </Badge>
-                                        <Badge variant="outline" className="rounded-full">
+                                        <Badge
+                                            variant="outline"
+                                            className="rounded-full"
+                                        >
                                             {category.icon || 'Tanpa ikon'}
                                         </Badge>
                                     </div>
@@ -169,10 +205,13 @@ export default function DailyQuestCategoriesIndex({
                 <DialogContent className="max-w-xl">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingCategory ? 'Edit kategori' : 'Tambah kategori'}
+                            {editingCategory
+                                ? 'Edit kategori'
+                                : 'Tambah kategori'}
                         </DialogTitle>
                         <DialogDescription>
-                            Tentukan nama, ikon, dan warna supaya task dalam kategori ini konsisten secara visual.
+                            Tentukan nama, ikon, dan warna supaya task dalam
+                            kategori ini konsisten secara visual.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -212,7 +251,9 @@ export default function DailyQuestCategoriesIndex({
                             <Label>Warna</Label>
                             <ColorPicker
                                 value={form.data.color}
-                                onChange={(value) => form.setData('color', value)}
+                                onChange={(value) =>
+                                    form.setData('color', value)
+                                }
                             />
                             <InputError message={form.errors.color} />
                         </div>
@@ -224,7 +265,9 @@ export default function DailyQuestCategoriesIndex({
                                 disabled={form.processing}
                                 onClick={submit}
                             >
-                                {editingCategory ? 'Simpan perubahan' : 'Buat kategori'}
+                                {editingCategory
+                                    ? 'Simpan perubahan'
+                                    : 'Buat kategori'}
                             </Button>
                             <Button
                                 type="button"
@@ -249,7 +292,7 @@ export default function DailyQuestCategoriesIndex({
             <AlertDialog
                 open={deleteTarget !== null}
                 onOpenChange={(open) => {
-                    if (! open) {
+                    if (!open) {
                         setDeleteTarget(null);
                     }
                 }}
@@ -258,7 +301,8 @@ export default function DailyQuestCategoriesIndex({
                     <AlertDialogHeader>
                         <AlertDialogTitle>Hapus kategori ini?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Kategori akan dihapus permanen. Pastikan task yang memakainya memang sudah siap dipindahkan.
+                            Kategori akan dihapus permanen. Pastikan task yang
+                            memakainya memang sudah siap dipindahkan.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -266,12 +310,12 @@ export default function DailyQuestCategoriesIndex({
                         <AlertDialogAction
                             variant="destructive"
                             onClick={() => {
-                                if (! deleteTarget) {
+                                if (!deleteTarget) {
                                     return;
                                 }
 
                                 deleteForm.delete(
-                                    `/categories/${deleteTarget.public_id}`,
+                                    `/categories/${deleteTarget.id}`,
                                     {
                                         preserveScroll: true,
                                         onSuccess: () => setDeleteTarget(null),

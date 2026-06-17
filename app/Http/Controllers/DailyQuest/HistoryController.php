@@ -43,8 +43,8 @@ class HistoryController extends Controller
         return Inertia::render('daily-quest/history/index', [
             'days' => $groupedDays,
             'filters' => [
-                'task_public_id' => $request->string('task_public_id')->toString(),
-                'category_public_id' => $request->string('category_public_id')->toString(),
+                'task_id' => $request->string('task_id')->toString(),
+                'category_id' => $request->string('category_id')->toString(),
                 'from' => $request->string('from')->toString(),
                 'to' => $request->string('to')->toString(),
             ],
@@ -76,14 +76,14 @@ class HistoryController extends Controller
     {
         $query = TaskInstance::query()->where('user_id', $request->user()->id);
 
-        if ($request->filled('task_public_id')) {
-            $taskPublicId = $request->string('task_public_id')->toString();
-            $query->whereHas('task', fn (Builder $taskQuery): Builder => $taskQuery->where('public_id', $taskPublicId));
+        if ($request->filled('task_id')) {
+            $taskId = $request->string('task_id')->toString();
+            $query->whereHas('task', fn (Builder $taskQuery): Builder => $taskQuery->whereKey($taskId));
         }
 
-        if ($request->filled('category_public_id')) {
-            $categoryPublicId = $request->string('category_public_id')->toString();
-            $query->whereHas('task.category', fn (Builder $categoryQuery): Builder => $categoryQuery->where('public_id', $categoryPublicId));
+        if ($request->filled('category_id')) {
+            $categoryId = $request->string('category_id')->toString();
+            $query->whereHas('task.category', fn (Builder $categoryQuery): Builder => $categoryQuery->whereKey($categoryId));
         }
 
         if ($request->filled('from')) {

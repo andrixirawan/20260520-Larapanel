@@ -32,10 +32,13 @@ export default function CategoryPicker({
 }: CategoryPickerProps) {
     const [open, setOpen] = useState(false);
     const selectedCategory =
-        categories.find((category) => category.public_id === value) ?? null;
+        categories.find((category) => category.id === value) ?? null;
 
     const sortedCategories = useMemo(
-        () => [...categories].sort((left, right) => left.name.localeCompare(right.name)),
+        () =>
+            [...categories].sort((left, right) =>
+                left.name.localeCompare(right.name),
+            ),
         [categories],
     );
 
@@ -48,7 +51,9 @@ export default function CategoryPicker({
                 onClick={() => setOpen(true)}
             >
                 <span className="truncate">
-                    {selectedCategory ? categoryLabel(selectedCategory) : 'Pilih kategori'}
+                    {selectedCategory
+                        ? categoryLabel(selectedCategory)
+                        : 'Pilih kategori'}
                 </span>
                 <ChevronsUpDown className="size-4 text-muted-foreground" />
             </Button>
@@ -58,7 +63,8 @@ export default function CategoryPicker({
                     <DrawerHeader className="text-left">
                         <DrawerTitle>Pilih kategori</DrawerTitle>
                         <DrawerDescription>
-                            Cari kategori lalu pilih satu yang paling relevan untuk task ini.
+                            Cari kategori lalu pilih satu yang paling relevan
+                            untuk task ini.
                         </DrawerDescription>
                     </DrawerHeader>
 
@@ -83,7 +89,9 @@ export default function CategoryPicker({
                                     <Check
                                         className={cn(
                                             'size-4',
-                                            value === '' ? 'opacity-100' : 'opacity-0',
+                                            value === ''
+                                                ? 'opacity-100'
+                                                : 'opacity-0',
                                         )}
                                     />
                                     Tanpa kategori
@@ -91,17 +99,17 @@ export default function CategoryPicker({
 
                                 {sortedCategories.map((category) => (
                                     <CommandItem
-                                        key={category.public_id}
+                                        key={category.id}
                                         value={`${category.name} ${category.icon ?? ''}`}
                                         onSelect={() => {
-                                            onChange(category.public_id);
+                                            onChange(category.id);
                                             setOpen(false);
                                         }}
                                     >
                                         <Check
                                             className={cn(
                                                 'size-4',
-                                                value === category.public_id
+                                                value === category.id
                                                     ? 'opacity-100'
                                                     : 'opacity-0',
                                             )}

@@ -47,7 +47,7 @@ type TaskFormProps = {
 };
 
 type TaskFormData = {
-    category_public_id: string;
+    category_id: string;
     name: string;
     description: string;
     icon: string;
@@ -67,7 +67,7 @@ function toInitialData(task?: DailyQuestTask): TaskFormData {
     const endsAt = task?.recurrence_ends_at ?? '';
 
     return {
-        category_public_id: task?.category?.public_id ?? '',
+        category_id: task?.category?.id ?? '',
         name: task?.name ?? '',
         description: task?.description ?? '',
         icon: task?.icon ?? '',
@@ -84,7 +84,8 @@ function toInitialData(task?: DailyQuestTask): TaskFormData {
                 ? String(
                       Math.max(
                           Math.round(
-                              (parseISO(endsAt).getTime() - parseISO(startsAt).getTime()) /
+                              (parseISO(endsAt).getTime() -
+                                  parseISO(startsAt).getTime()) /
                                   86_400_000,
                           ) + 1,
                           1,
@@ -103,7 +104,7 @@ export default function TaskForm({
     const [emojiOpen, setEmojiOpen] = useState(false);
     const form = useForm<TaskFormData>(toInitialData(task));
     const selectedCategory =
-        categories.find((category) => category.public_id === form.data.category_public_id) ??
+        categories.find((category) => category.id === form.data.category_id) ??
         null;
     const handleRecurrenceChange = <K extends keyof RecurrenceValues>(
         key: K,
@@ -123,7 +124,7 @@ export default function TaskForm({
     const submit = () => {
         form.transform((data) => {
             const payload: Record<string, unknown> = {
-                category_public_id: data.category_public_id || null,
+                category_id: data.category_id || null,
                 name: data.name.trim(),
                 description: data.description.trim() || null,
                 icon: data.icon || null,
@@ -141,7 +142,8 @@ export default function TaskForm({
             };
 
             if (data.recurrence_type === 'one_time') {
-                payload.recurrence_starts_at = data.recurrence_starts_at || null;
+                payload.recurrence_starts_at =
+                    data.recurrence_starts_at || null;
             }
 
             if (data.recurrence_type === 'x_days') {
@@ -156,7 +158,8 @@ export default function TaskForm({
             }
 
             if (data.recurrence_type === 'date_range') {
-                payload.recurrence_starts_at = data.recurrence_starts_at || null;
+                payload.recurrence_starts_at =
+                    data.recurrence_starts_at || null;
                 payload.recurrence_ends_at = data.recurrence_ends_at || null;
             }
 
@@ -169,7 +172,7 @@ export default function TaskForm({
             return;
         }
 
-        form.patch(`/tasks/${task?.public_id}`, { preserveScroll: true });
+        form.patch(`/tasks/${task?.id}`, { preserveScroll: true });
     };
 
     return (
@@ -196,7 +199,7 @@ export default function TaskForm({
                             </button>
 
                             <div className="space-y-1">
-                                <p className="text-xs uppercase tracking-[0.22em] text-white/70">
+                                <p className="text-xs tracking-[0.22em] text-white/70 uppercase">
                                     Preview
                                 </p>
                                 <p className="text-2xl font-semibold">
@@ -231,7 +234,10 @@ export default function TaskForm({
                                         id="task-name"
                                         value={form.data.name}
                                         onChange={(event) =>
-                                            form.setData('name', event.target.value)
+                                            form.setData(
+                                                'name',
+                                                event.target.value,
+                                            )
                                         }
                                         placeholder="Contoh: Baca 10 halaman"
                                         className="rounded-2xl"
@@ -240,7 +246,9 @@ export default function TaskForm({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="task-description">Deskripsi</Label>
+                                    <Label htmlFor="task-description">
+                                        Deskripsi
+                                    </Label>
                                     <Textarea
                                         id="task-description"
                                         value={form.data.description}
@@ -254,7 +262,9 @@ export default function TaskForm({
                                         placeholder="Tambahkan konteks singkat atau target spesifik."
                                         className="rounded-2xl"
                                     />
-                                    <InputError message={form.errors.description} />
+                                    <InputError
+                                        message={form.errors.description}
+                                    />
                                 </div>
                             </CardContent>
                         </Card>
@@ -264,8 +274,10 @@ export default function TaskForm({
                             values={{
                                 recurrence_type: form.data.recurrence_type,
                                 recurrence_days: form.data.recurrence_days,
-                                recurrence_starts_at: form.data.recurrence_starts_at,
-                                recurrence_ends_at: form.data.recurrence_ends_at,
+                                recurrence_starts_at:
+                                    form.data.recurrence_starts_at,
+                                recurrence_ends_at:
+                                    form.data.recurrence_ends_at,
                                 x_days_span: form.data.x_days_span,
                             }}
                             errors={form.errors}
@@ -298,13 +310,13 @@ export default function TaskForm({
                                     <Label>Kategori</Label>
                                     <CategoryPicker
                                         categories={categories}
-                                        value={form.data.category_public_id}
+                                        value={form.data.category_id}
                                         onChange={(value) =>
-                                            form.setData('category_public_id', value)
+                                            form.setData('category_id', value)
                                         }
                                     />
                                     <InputError
-                                        message={form.errors.category_public_id}
+                                        message={form.errors.category_id}
                                     />
                                 </div>
 
@@ -340,9 +352,12 @@ export default function TaskForm({
 
                                 <div className="flex items-center justify-between rounded-2xl border p-4">
                                     <div>
-                                        <p className="font-medium">Task aktif</p>
+                                        <p className="font-medium">
+                                            Task aktif
+                                        </p>
                                         <p className="text-sm text-muted-foreground">
-                                            Task aktif akan ikut dijadwalkan oleh generator.
+                                            Task aktif akan ikut dijadwalkan
+                                            oleh generator.
                                         </p>
                                     </div>
                                     <Switch

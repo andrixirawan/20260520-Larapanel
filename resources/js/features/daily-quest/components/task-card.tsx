@@ -45,11 +45,11 @@ export default function TaskCard({ task, onOpenActions }: TaskCardProps) {
                     role="button"
                     tabIndex={0}
                     className="flex w-full cursor-pointer items-start gap-4 px-5 py-5 text-left"
-                    onClick={() => router.visit(`/tasks/${task.public_id}/edit`)}
+                    onClick={() => router.visit(`/tasks/${task.id}/edit`)}
                     onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
-                            router.visit(`/tasks/${task.public_id}/edit`);
+                            router.visit(`/tasks/${task.id}/edit`);
                         }
                     }}
                 >
@@ -70,7 +70,8 @@ export default function TaskCard({ task, onOpenActions }: TaskCardProps) {
                                     {task.name}
                                 </p>
                                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                                    {task.description || task.recurrence_summary}
+                                    {task.description ||
+                                        task.recurrence_summary}
                                 </p>
                             </div>
 
@@ -97,7 +98,9 @@ export default function TaskCard({ task, onOpenActions }: TaskCardProps) {
                             </Badge>
                             <Badge
                                 className="rounded-full"
-                                variant={status === 'active' ? 'default' : 'outline'}
+                                variant={
+                                    status === 'active' ? 'default' : 'outline'
+                                }
                             >
                                 {status === 'active' ? (
                                     <PlayCircle className="size-3.5" />
@@ -113,8 +116,13 @@ export default function TaskCard({ task, onOpenActions }: TaskCardProps) {
                                       : 'Arsip'}
                             </Badge>
                             {task.category ? (
-                                <Badge variant="outline" className="rounded-full">
-                                    {task.category.icon ? `${task.category.icon} ` : ''}
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full"
+                                >
+                                    {task.category.icon
+                                        ? `${task.category.icon} `
+                                        : ''}
                                     {task.category.name}
                                 </Badge>
                             ) : null}

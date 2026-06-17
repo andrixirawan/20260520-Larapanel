@@ -2,18 +2,18 @@
 
 namespace App\Models\DailyQuest;
 
-use App\Models\Concerns\HasPublicId;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class Task extends Model
 {
-    use HasFactory, HasPublicId, SoftDeletes;
+    use HasFactory, HasUlids, SoftDeletes;
 
     /**
      * @var array<int, string>

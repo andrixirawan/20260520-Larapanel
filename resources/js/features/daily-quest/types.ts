@@ -1,5 +1,5 @@
 export type TaskCategory = {
-    public_id: string;
+    id: string;
     name: string;
     color: string | null;
     icon: string | null;
@@ -18,7 +18,7 @@ export type RecurrenceType =
 export type TaskStatusTab = 'active' | 'paused' | 'archived';
 
 export type DailyQuestTask = {
-    public_id: string;
+    id: string;
     name: string;
     description: string | null;
     icon: string | null;
@@ -37,7 +37,7 @@ export type DailyQuestTask = {
 };
 
 export type TaskInstance = {
-    public_id: string;
+    id: string;
     scheduled_date: string;
     completed_at: string | null;
     points_awarded: number | null;
@@ -67,8 +67,8 @@ export type HistoryDay = {
 };
 
 export type HistoryFilters = {
-    task_public_id?: string;
-    category_public_id?: string;
+    task_id?: string;
+    category_id?: string;
     from?: string;
     to?: string;
 };

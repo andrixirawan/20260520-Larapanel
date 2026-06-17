@@ -19,7 +19,7 @@ class StoreTaskRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_public_id' => ['nullable', 'string'],
+            'category_id' => ['nullable', 'string'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'icon' => ['nullable', 'string', 'max:64'],
@@ -69,31 +69,29 @@ class StoreTaskRequest extends FormRequest
             $validated['recurrence_ends_at'] = null;
         }
 
-        unset($validated['category_public_id']);
-
         return $validated;
     }
 
     protected function resolvedCategory(): ?TaskCategory
     {
-        if (! $this->filled('category_public_id')) {
+        if (! $this->filled('category_id')) {
             return null;
         }
 
         return $this->user()
             ?->categories()
-            ->where('public_id', $this->string('category_public_id')->toString())
+            ->whereKey($this->string('category_id')->toString())
             ->first();
     }
 
     protected function validateCategoryOwnership(Validator $validator): void
     {
-        if (! $this->filled('category_public_id')) {
+        if (! $this->filled('category_id')) {
             return;
         }
 
         if (! $this->resolvedCategory()) {
-            $validator->errors()->add('category_public_id', __('The selected category is invalid.'));
+            $validator->errors()->add('category_id', __('The selected category is invalid.'));
         }
     }
 

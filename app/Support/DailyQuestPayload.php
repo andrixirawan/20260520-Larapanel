@@ -13,7 +13,7 @@ class DailyQuestPayload
     public static function category(TaskCategory $category): array
     {
         return [
-            'public_id' => $category->public_id,
+            'id' => $category->id,
             'name' => $category->name,
             'color' => $category->color,
             'icon' => $category->icon,
@@ -26,7 +26,7 @@ class DailyQuestPayload
     public static function task(Task $task): array
     {
         return [
-            'public_id' => $task->public_id,
+            'id' => $task->id,
             'name' => $task->name,
             'description' => $task->description,
             'icon' => $task->icon,
@@ -48,7 +48,7 @@ class DailyQuestPayload
     public static function taskInstance(TaskInstance $instance): array
     {
         return [
-            'public_id' => $instance->public_id,
+            'id' => $instance->id,
             'scheduled_date' => $instance->scheduled_date?->toDateString(),
             'completed_at' => $instance->completed_at?->toIso8601String(),
             'points_awarded' => $instance->points_awarded,

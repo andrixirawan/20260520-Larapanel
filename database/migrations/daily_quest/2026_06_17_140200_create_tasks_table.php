@@ -12,10 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tasks', function (Blueprint $table): void {
-            $table->id();
-            $table->ulid('public_id')->unique();
+            $table->ulid('id')->primary();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('category_id')->nullable()->constrained('task_categories')->nullOnDelete();
+            $table->foreignUlid('category_id')->nullable()->constrained('task_categories')->nullOnDelete();
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('icon', 64)->nullable();

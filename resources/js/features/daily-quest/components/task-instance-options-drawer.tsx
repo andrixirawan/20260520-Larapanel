@@ -31,7 +31,7 @@ export default function TaskInstanceOptionsDrawer({
         setDraftNotes(instance?.notes ?? '');
     }, [instance]);
 
-    if (! instance) {
+    if (!instance) {
         return null;
     }
 
@@ -39,10 +39,12 @@ export default function TaskInstanceOptionsDrawer({
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent className="mx-auto max-w-2xl">
                 <DrawerHeader className="text-left">
-                    <DrawerTitle>{instance.task?.name ?? 'Task options'}</DrawerTitle>
+                    <DrawerTitle>
+                        {instance.task?.name ?? 'Task options'}
+                    </DrawerTitle>
                     <DrawerDescription>
-                        Aksi cepat untuk task hari ini. Tekan lama kartu task untuk
-                        membuka drawer ini kapan saja.
+                        Aksi cepat untuk task hari ini. Tekan lama kartu task
+                        untuk membuka drawer ini kapan saja.
                     </DrawerDescription>
                 </DrawerHeader>
 
@@ -54,7 +56,9 @@ export default function TaskInstanceOptionsDrawer({
                         </div>
                         <Textarea
                             value={draftNotes}
-                            onChange={(event) => setDraftNotes(event.target.value)}
+                            onChange={(event) =>
+                                setDraftNotes(event.target.value)
+                            }
                             placeholder="Catatan singkat untuk task ini"
                             rows={4}
                         />
@@ -70,7 +74,9 @@ export default function TaskInstanceOptionsDrawer({
                             variant="outline"
                             className="justify-start rounded-2xl"
                             onClick={() => {
-                                toast.info('Skip flow akan disambungkan setelah endpoint backend tersedia.');
+                                toast.info(
+                                    'Skip flow akan disambungkan setelah endpoint backend tersedia.',
+                                );
                             }}
                         >
                             <Forward className="size-4" />
@@ -97,7 +103,7 @@ export default function TaskInstanceOptionsDrawer({
 
                 <DrawerFooter className="border-t bg-background/80 backdrop-blur-sm">
                     <Button asChild className="w-full rounded-full">
-                        <Link href={`/tasks/${instance.task?.public_id}`}>
+                        <Link href={`/tasks/${instance.task?.id}`}>
                             <FileText className="size-4" />
                             Lihat detail task
                         </Link>

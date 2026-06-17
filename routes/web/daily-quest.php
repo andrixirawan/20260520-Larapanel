@@ -13,14 +13,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('today', [TodayController::class, 'index'])->name('today');
-    Route::patch('instances/{instance:public_id}/complete', [TaskInstanceController::class, 'complete'])->name('instances.complete');
-    Route::patch('instances/{instance:public_id}/uncomplete', [TaskInstanceController::class, 'uncomplete'])->name('instances.uncomplete');
+    Route::patch('instances/{instance}/complete', [TaskInstanceController::class, 'complete'])->name('instances.complete');
+    Route::patch('instances/{instance}/uncomplete', [TaskInstanceController::class, 'uncomplete'])->name('instances.uncomplete');
 
-    Route::patch('tasks/{task:public_id}/pause', [TaskController::class, 'pause'])->name('tasks.pause');
-    Route::post('tasks/{task:public_id}/duplicate', [TaskController::class, 'duplicate'])->name('tasks.duplicate');
-    Route::resource('tasks', TaskController::class)->scoped([
-        'task' => 'public_id',
-    ]);
+    Route::patch('tasks/{task}/pause', [TaskController::class, 'pause'])->name('tasks.pause');
+    Route::post('tasks/{task}/duplicate', [TaskController::class, 'duplicate'])->name('tasks.duplicate');
+    Route::resource('tasks', TaskController::class);
 
     Route::get('history', [HistoryController::class, 'index'])->name('history');
     Route::get('history/{date}', [HistoryController::class, 'show'])->name('history.show');
@@ -30,6 +28,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('categories', [TaskCategoryController::class, 'index'])->name('categories.index');
     Route::post('categories', [TaskCategoryController::class, 'store'])->name('categories.store');
-    Route::match(['put', 'patch'], 'categories/{category:public_id}', [TaskCategoryController::class, 'update'])->name('categories.update');
-    Route::delete('categories/{category:public_id}', [TaskCategoryController::class, 'destroy'])->name('categories.destroy');
+    Route::match(['put', 'patch'], 'categories/{category}', [TaskCategoryController::class, 'update'])->name('categories.update');
+    Route::delete('categories/{category}', [TaskCategoryController::class, 'destroy'])->name('categories.destroy');
 });

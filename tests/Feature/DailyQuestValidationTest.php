@@ -62,10 +62,10 @@ test('update task request rejects categories owned by another user', function ()
             'name' => 'Task',
             'points' => 10,
             'recurrence_type' => 'daily',
-            'category_public_id' => $otherCategory->public_id,
+            'category_id' => $otherCategory->id,
         ])
         ->assertRedirect(route('tasks.edit', $task))
-        ->assertSessionHasErrors('category_public_id');
+        ->assertSessionHasErrors('category_id');
 
     expect($task->fresh()->category_id)->toBeNull();
 });

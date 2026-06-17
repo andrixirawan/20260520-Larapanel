@@ -51,16 +51,16 @@ type HistoryIndexProps = {
 };
 
 type HistoryFilterDraft = {
-    task_public_id: string;
-    category_public_id: string;
+    task_id: string;
+    category_id: string;
     from: string;
     to: string;
 };
 
 function normalizeFilters(filters: HistoryFilters): HistoryFilterDraft {
     return {
-        task_public_id: filters.task_public_id ?? '',
-        category_public_id: filters.category_public_id ?? '',
+        task_id: filters.task_id ?? '',
+        category_id: filters.category_id ?? '',
         from: filters.from ?? '',
         to: filters.to ?? '',
     };
@@ -86,8 +86,8 @@ function HistoryFiltersPopover({
         router.get(
             '/history',
             {
-                task_public_id: draftFilters.task_public_id || undefined,
-                category_public_id: draftFilters.category_public_id || undefined,
+                task_id: draftFilters.task_id || undefined,
+                category_id: draftFilters.category_id || undefined,
                 from: draftFilters.from || undefined,
                 to: draftFilters.to || undefined,
             },
@@ -101,13 +101,21 @@ function HistoryFiltersPopover({
     const resetFilters = () => {
         const nextFilters = normalizeFilters({});
         setDraftFilters(nextFilters);
-        router.get('/history', {}, { preserveScroll: true, preserveState: true });
+        router.get(
+            '/history',
+            {},
+            { preserveScroll: true, preserveState: true },
+        );
     };
 
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button type="button" variant="outline" className="rounded-full">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full"
+                >
                     <Filter className="size-4" />
                     Filter
                     {activeFilterCount > 0 ? (
@@ -121,7 +129,8 @@ function HistoryFiltersPopover({
                 <PopoverHeader>
                     <PopoverTitle>Filter history</PopoverTitle>
                     <PopoverDescription>
-                        Batasi data berdasarkan task, kategori, atau rentang tanggal.
+                        Batasi data berdasarkan task, kategori, atau rentang
+                        tanggal.
                     </PopoverDescription>
                 </PopoverHeader>
 
@@ -129,11 +138,11 @@ function HistoryFiltersPopover({
                     <div className="space-y-2">
                         <p className="text-sm font-medium">Task</p>
                         <Select
-                            value={draftFilters.task_public_id || 'all'}
+                            value={draftFilters.task_id || 'all'}
                             onValueChange={(value) =>
                                 setDraftFilters((current) => ({
                                     ...current,
-                                    task_public_id: value === 'all' ? '' : value,
+                                    task_id: value === 'all' ? '' : value,
                                 }))
                             }
                         >
@@ -143,7 +152,7 @@ function HistoryFiltersPopover({
                             <SelectContent>
                                 <SelectItem value="all">Semua task</SelectItem>
                                 {tasks.map((task) => (
-                                    <SelectItem key={task.public_id} value={task.public_id}>
+                                    <SelectItem key={task.id} value={task.id}>
                                         {task.icon ? `${task.icon} ` : ''}
                                         {task.name}
                                     </SelectItem>
@@ -155,11 +164,11 @@ function HistoryFiltersPopover({
                     <div className="space-y-2">
                         <p className="text-sm font-medium">Kategori</p>
                         <Select
-                            value={draftFilters.category_public_id || 'all'}
+                            value={draftFilters.category_id || 'all'}
                             onValueChange={(value) =>
                                 setDraftFilters((current) => ({
                                     ...current,
-                                    category_public_id: value === 'all' ? '' : value,
+                                    category_id: value === 'all' ? '' : value,
                                 }))
                             }
                         >
@@ -167,13 +176,17 @@ function HistoryFiltersPopover({
                                 <SelectValue placeholder="Semua kategori" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Semua kategori</SelectItem>
+                                <SelectItem value="all">
+                                    Semua kategori
+                                </SelectItem>
                                 {categories.map((category) => (
                                     <SelectItem
-                                        key={category.public_id}
-                                        value={category.public_id}
+                                        key={category.id}
+                                        value={category.id}
                                     >
-                                        {category.icon ? `${category.icon} ` : ''}
+                                        {category.icon
+                                            ? `${category.icon} `
+                                            : ''}
                                         {category.name}
                                     </SelectItem>
                                 ))}
@@ -242,7 +255,8 @@ function HistoryInstanceRow({ instance }: { instance: TaskInstance }) {
             <div
                 className="flex size-11 shrink-0 items-center justify-center rounded-2xl text-lg text-white shadow-sm"
                 style={{
-                    backgroundColor: task?.color ?? task?.category?.color ?? '#0f172a',
+                    backgroundColor:
+                        task?.color ?? task?.category?.color ?? '#0f172a',
                 }}
             >
                 {task?.icon ?? task?.category?.icon ?? '📝'}
@@ -250,7 +264,9 @@ function HistoryInstanceRow({ instance }: { instance: TaskInstance }) {
 
             <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold">{task?.name ?? 'Deleted task'}</p>
+                    <p className="text-sm font-semibold">
+                        {task?.name ?? 'Deleted task'}
+                    </p>
                     <Badge
                         variant={completed ? 'secondary' : 'outline'}
                         className="rounded-full"
@@ -267,15 +283,20 @@ function HistoryInstanceRow({ instance }: { instance: TaskInstance }) {
                 <p className="text-sm text-muted-foreground">
                     {task?.category
                         ? `${task.category.icon ? `${task.category.icon} ` : ''}${task.category.name}`
-                        : task?.recurrence_summary ?? 'Task'}
+                        : (task?.recurrence_summary ?? 'Task')}
                 </p>
 
                 {instance.notes ? (
-                    <p className="text-xs text-muted-foreground">{instance.notes}</p>
+                    <p className="text-xs text-muted-foreground">
+                        {instance.notes}
+                    </p>
                 ) : null}
             </div>
 
-            <Badge className="rounded-full" variant={completed ? 'default' : 'outline'}>
+            <Badge
+                className="rounded-full"
+                variant={completed ? 'default' : 'outline'}
+            >
                 <Sparkles className="size-3" />
                 {instance.points_awarded ?? task?.points ?? 0}
             </Badge>
@@ -298,7 +319,10 @@ export default function DailyQuestHistoryIndex({
     const [selectedMonth, setSelectedMonth] = useState<string>(
         monthOptions[0] ?? new Date().toISOString().slice(0, 7),
     );
-    const normalizedFilters = useMemo(() => normalizeFilters(filters), [filters]);
+    const normalizedFilters = useMemo(
+        () => normalizeFilters(filters),
+        [filters],
+    );
     const effectiveSelectedMonth = monthOptions.includes(selectedMonth)
         ? selectedMonth
         : (monthOptions[0] ?? new Date().toISOString().slice(0, 7));
@@ -307,12 +331,18 @@ export default function DailyQuestHistoryIndex({
             ? selectedDate
             : null;
     const overallStats = useMemo(() => {
-        const totalTasks = summaries.reduce((sum, item) => sum + item.total_tasks, 0);
+        const totalTasks = summaries.reduce(
+            (sum, item) => sum + item.total_tasks,
+            0,
+        );
         const completedTasks = summaries.reduce(
             (sum, item) => sum + item.completed_tasks,
             0,
         );
-        const points = summaries.reduce((sum, item) => sum + item.points_earned, 0);
+        const points = summaries.reduce(
+            (sum, item) => sum + item.points_earned,
+            0,
+        );
 
         return {
             days: summaries.length,
@@ -320,7 +350,9 @@ export default function DailyQuestHistoryIndex({
             completedTasks,
             points,
             completionRate:
-                totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+                totalTasks > 0
+                    ? Math.round((completedTasks / totalTasks) * 100)
+                    : 0,
         };
     }, [summaries]);
 
@@ -352,13 +384,15 @@ export default function DailyQuestHistoryIndex({
                 <Card className="overflow-hidden border-0 bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_45%,#0ea5e9_100%)] py-0 text-white shadow-xl">
                     <CardContent className="grid gap-4 px-5 py-5 sm:grid-cols-4 sm:px-6">
                         <div className="space-y-1">
-                            <p className="text-xs uppercase tracking-[0.18em] text-white/65">
+                            <p className="text-xs tracking-[0.18em] text-white/65 uppercase">
                                 Hari tercatat
                             </p>
-                            <p className="text-3xl font-semibold">{overallStats.days}</p>
+                            <p className="text-3xl font-semibold">
+                                {overallStats.days}
+                            </p>
                         </div>
                         <div className="space-y-1">
-                            <p className="text-xs uppercase tracking-[0.18em] text-white/65">
+                            <p className="text-xs tracking-[0.18em] text-white/65 uppercase">
                                 Completion
                             </p>
                             <p className="text-3xl font-semibold">
@@ -370,7 +404,7 @@ export default function DailyQuestHistoryIndex({
                             />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-xs uppercase tracking-[0.18em] text-white/65">
+                            <p className="text-xs tracking-[0.18em] text-white/65 uppercase">
                                 Task selesai
                             </p>
                             <p className="text-3xl font-semibold">
@@ -378,10 +412,12 @@ export default function DailyQuestHistoryIndex({
                             </p>
                         </div>
                         <div className="space-y-1">
-                            <p className="text-xs uppercase tracking-[0.18em] text-white/65">
+                            <p className="text-xs tracking-[0.18em] text-white/65 uppercase">
                                 Poin terkumpul
                             </p>
-                            <p className="text-3xl font-semibold">{overallStats.points}</p>
+                            <p className="text-3xl font-semibold">
+                                {overallStats.points}
+                            </p>
                         </div>
                     </CardContent>
                 </Card>
@@ -395,7 +431,9 @@ export default function DailyQuestHistoryIndex({
                                     Belum ada history yang cocok
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                    Ubah filter atau selesaikan beberapa task dulu agar heatmap dan daftar hari mulai terisi.
+                                    Ubah filter atau selesaikan beberapa task
+                                    dulu agar heatmap dan daftar hari mulai
+                                    terisi.
                                 </p>
                             </div>
                         </CardContent>
@@ -409,14 +447,16 @@ export default function DailyQuestHistoryIndex({
                             availableMonths={monthOptions}
                             onMonthChange={setSelectedMonth}
                             onSelectDate={scrollToDate}
-                            onOpenDate={(date) => router.visit(`/history/${date}`)}
+                            onOpenDate={(date) =>
+                                router.visit(`/history/${date}`)
+                            }
                         />
 
                         <section className="space-y-4">
                             {days.map((day) => {
                                 const date = day.summary.date;
 
-                                if (! date) {
+                                if (!date) {
                                     return null;
                                 }
 
@@ -433,13 +473,26 @@ export default function DailyQuestHistoryIndex({
                                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                                     <div className="space-y-1">
                                                         <p className="text-lg font-semibold capitalize">
-                                                            {formatHistoryDayLabel(date)}
+                                                            {formatHistoryDayLabel(
+                                                                date,
+                                                            )}
                                                         </p>
                                                         <p className="text-sm text-muted-foreground">
-                                                            {day.summary.completed_tasks}/
-                                                            {day.summary.total_tasks}{' '}
+                                                            {
+                                                                day.summary
+                                                                    .completed_tasks
+                                                            }
+                                                            /
+                                                            {
+                                                                day.summary
+                                                                    .total_tasks
+                                                            }{' '}
                                                             task selesai •{' '}
-                                                            {day.summary.points_earned} poin
+                                                            {
+                                                                day.summary
+                                                                    .points_earned
+                                                            }{' '}
+                                                            poin
                                                         </p>
                                                     </div>
 
@@ -449,7 +502,11 @@ export default function DailyQuestHistoryIndex({
                                                             className="rounded-full"
                                                         >
                                                             <CheckCircle2 className="size-3" />
-                                                            {day.summary.completion_rate}%
+                                                            {
+                                                                day.summary
+                                                                    .completion_rate
+                                                            }
+                                                            %
                                                         </Badge>
                                                         <Button
                                                             type="button"
@@ -468,17 +525,26 @@ export default function DailyQuestHistoryIndex({
                                                 </div>
 
                                                 <Progress
-                                                    value={day.summary.completion_rate}
+                                                    value={
+                                                        day.summary
+                                                            .completion_rate
+                                                    }
                                                     className="h-2.5"
                                                 />
 
                                                 <div className="space-y-3">
-                                                    {day.instances.map((instance) => (
-                                                        <HistoryInstanceRow
-                                                            key={instance.public_id}
-                                                            instance={instance}
-                                                        />
-                                                    ))}
+                                                    {day.instances.map(
+                                                        (instance) => (
+                                                            <HistoryInstanceRow
+                                                                key={
+                                                                    instance.id
+                                                                }
+                                                                instance={
+                                                                    instance
+                                                                }
+                                                            />
+                                                        ),
+                                                    )}
                                                 </div>
                                             </CardContent>
                                         </Card>

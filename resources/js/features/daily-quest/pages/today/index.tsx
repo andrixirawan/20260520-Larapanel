@@ -7,12 +7,7 @@ import {
     Sparkles,
     Target,
 } from 'lucide-react';
-import {
-    startTransition,
-    useEffect,
-    useMemo,
-    useState,
-} from 'react';
+import { useMemo, useState } from 'react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,26 +36,6 @@ type TodayPageProps = {
     streak: number;
 };
 
-function calculateStats(date: string, instances: TaskInstance[]): TodayStats {
-    const completedInstances = instances.filter(
-        (instance) => instance.completed_at !== null,
-    );
-
-    return {
-        date,
-        total_tasks: instances.length,
-        completed_tasks: completedInstances.length,
-        points_earned: completedInstances.reduce(
-            (sum, instance) => sum + (instance.points_awarded ?? 0),
-            0,
-        ),
-        completion_rate:
-            instances.length > 0
-                ? Math.round((completedInstances.length / instances.length) * 100)
-                : 0,
-    };
-}
-
 function formatTodayLabel(date: string) {
     return new Intl.DateTimeFormat('id-ID', {
         weekday: 'long',
@@ -78,34 +53,19 @@ export default function DailyQuestTodayIndex({
     const [quickAddOpen, setQuickAddOpen] = useState(false);
     const [optionsOpen, setOptionsOpen] = useState(false);
     const [completedOpen, setCompletedOpen] = useState(true);
-    const [selectedInstance, setSelectedInstance] = useState<TaskInstance | null>(
-        null,
-    );
-    const [optimisticInstances, setOptimisticInstances] =
-        useState<TaskInstance[]>(instances);
+    const [selectedInstance, setSelectedInstance] =
+        useState<TaskInstance | null>(null);
     const [pendingIds, setPendingIds] = useState<string[]>([]);
 
-    useEffect(() => {
-        setOptimisticInstances(instances);
-    }, [instances]);
-
-    const currentStats = useMemo(() => {
-        if (optimisticInstances === instances) {
-            return stats;
-        }
-
-        return calculateStats(date, optimisticInstances);
-    }, [date, instances, optimisticInstances, stats]);
+    const currentStats = stats;
 
     const pendingInstances = useMemo(
-        () =>
-            optimisticInstances.filter((instance) => instance.completed_at === null),
-        [optimisticInstances],
+        () => instances.filter((instance) => instance.completed_at === null),
+        [instances],
     );
     const completedInstances = useMemo(
-        () =>
-            optimisticInstances.filter((instance) => instance.completed_at !== null),
-        [optimisticInstances],
+        () => instances.filter((instance) => instance.completed_at !== null),
+        [instances],
     );
 
     const allCompleted =
@@ -113,46 +73,23 @@ export default function DailyQuestTodayIndex({
         currentStats.completed_tasks === currentStats.total_tasks;
 
     const toggleInstance = (instance: TaskInstance) => {
-        if (pendingIds.includes(instance.public_id)) {
+        if (pendingIds.includes(instance.id)) {
             return;
         }
 
         const willComplete = instance.completed_at === null;
-        const previousInstances = optimisticInstances;
 
-        setPendingIds((current) => [...current, instance.public_id]);
-        startTransition(() => {
-            setOptimisticInstances((current) =>
-                current.map((currentInstance) =>
-                    currentInstance.public_id !== instance.public_id
-                        ? currentInstance
-                        : {
-                              ...currentInstance,
-                              completed_at: willComplete
-                                  ? new Date().toISOString()
-                                  : null,
-                              points_awarded: willComplete
-                                  ? currentInstance.task?.points ?? 0
-                                  : null,
-                          },
-                ),
-            );
-        });
+        setPendingIds((current) => [...current, instance.id]);
 
         router.patch(
-            `/instances/${instance.public_id}/${willComplete ? 'complete' : 'uncomplete'}`,
+            `/instances/${instance.id}/${willComplete ? 'complete' : 'uncomplete'}`,
             {},
             {
                 preserveScroll: true,
                 preserveState: false,
-                onError: () => {
-                    startTransition(() => {
-                        setOptimisticInstances(previousInstances);
-                    });
-                },
                 onFinish: () => {
                     setPendingIds((current) =>
-                        current.filter((id) => id !== instance.public_id),
+                        current.filter((id) => id !== instance.id),
                     );
                 },
             },
@@ -168,7 +105,7 @@ export default function DailyQuestTodayIndex({
                     <CardHeader className="gap-4 px-5 py-5 sm:px-6">
                         <div className="flex flex-wrap items-start justify-between gap-4">
                             <div className="space-y-1">
-                                <p className="text-sm/none font-medium uppercase tracking-[0.22em] text-white/70">
+                                <p className="text-sm/none font-medium tracking-[0.22em] text-white/70 uppercase">
                                     Today
                                 </p>
                                 <CardTitle className="text-3xl font-semibold capitalize">
@@ -191,11 +128,12 @@ export default function DailyQuestTodayIndex({
 
                         <div className="grid gap-3 sm:grid-cols-3">
                             <div className="rounded-2xl bg-white/12 p-4 backdrop-blur-sm">
-                                <p className="text-xs uppercase tracking-[0.18em] text-white/70">
+                                <p className="text-xs tracking-[0.18em] text-white/70 uppercase">
                                     Progress
                                 </p>
                                 <p className="mt-2 text-2xl font-semibold">
-                                    {currentStats.completed_tasks}/{currentStats.total_tasks}
+                                    {currentStats.completed_tasks}/
+                                    {currentStats.total_tasks}
                                 </p>
                                 <Progress
                                     value={currentStats.completion_rate}
@@ -204,7 +142,7 @@ export default function DailyQuestTodayIndex({
                             </div>
 
                             <div className="rounded-2xl bg-white/12 p-4 backdrop-blur-sm">
-                                <p className="text-xs uppercase tracking-[0.18em] text-white/70">
+                                <p className="text-xs tracking-[0.18em] text-white/70 uppercase">
                                     Points hari ini
                                 </p>
                                 <p className="mt-2 text-2xl font-semibold">
@@ -216,7 +154,7 @@ export default function DailyQuestTodayIndex({
                             </div>
 
                             <div className="rounded-2xl bg-white/12 p-4 backdrop-blur-sm">
-                                <p className="text-xs uppercase tracking-[0.18em] text-white/70">
+                                <p className="text-xs tracking-[0.18em] text-white/70 uppercase">
                                     Target tersisa
                                 </p>
                                 <p className="mt-2 text-2xl font-semibold">
@@ -242,7 +180,8 @@ export default function DailyQuestTodayIndex({
                                         Semua task hari ini selesai.
                                     </p>
                                     <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                                        Progress penuh, streak aman, dan poin hari ini sudah terkunci.
+                                        Progress penuh, streak aman, dan poin
+                                        hari ini sudah terkunci.
                                     </p>
                                 </div>
                             </div>
@@ -298,11 +237,9 @@ export default function DailyQuestTodayIndex({
                             <div className="space-y-3">
                                 {pendingInstances.map((instance) => (
                                     <TaskItem
-                                        key={instance.public_id}
+                                        key={instance.id}
                                         instance={instance}
-                                        busy={pendingIds.includes(
-                                            instance.public_id,
-                                        )}
+                                        busy={pendingIds.includes(instance.id)}
                                         onToggle={toggleInstance}
                                         onOpenOptions={(nextInstance) => {
                                             setSelectedInstance(nextInstance);
@@ -320,7 +257,9 @@ export default function DailyQuestTodayIndex({
                         >
                             <div className="flex items-center justify-between gap-3">
                                 <div>
-                                    <p className="text-sm font-semibold">Selesai</p>
+                                    <p className="text-sm font-semibold">
+                                        Selesai
+                                    </p>
                                     <p className="text-sm text-muted-foreground">
                                         Task yang sudah kamu amankan hari ini.
                                     </p>
@@ -345,11 +284,9 @@ export default function DailyQuestTodayIndex({
                             <CollapsibleContent className="space-y-3 pt-4">
                                 {completedInstances.map((instance) => (
                                     <TaskItem
-                                        key={instance.public_id}
+                                        key={instance.id}
                                         instance={instance}
-                                        busy={pendingIds.includes(
-                                            instance.public_id,
-                                        )}
+                                        busy={pendingIds.includes(instance.id)}
                                         onToggle={toggleInstance}
                                         onOpenOptions={(nextInstance) => {
                                             setSelectedInstance(nextInstance);

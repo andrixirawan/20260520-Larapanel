@@ -12,9 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('task_instances', function (Blueprint $table): void {
-            $table->id();
-            $table->ulid('public_id')->unique();
-            $table->foreignId('task_id')->constrained('tasks')->cascadeOnDelete();
+            $table->ulid('id')->primary();
+            $table->foreignUlid('task_id')->constrained('tasks')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->date('scheduled_date');
             $table->timestamp('completed_at')->nullable();

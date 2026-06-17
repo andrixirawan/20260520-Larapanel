@@ -1,11 +1,5 @@
 import { router } from '@inertiajs/react';
-import {
-    Copy,
-    PauseCircle,
-    Pencil,
-    PlayCircle,
-    Trash2,
-} from 'lucide-react';
+import { Copy, PauseCircle, Pencil, PlayCircle, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import {
     AlertDialog,
@@ -43,7 +37,7 @@ export default function TaskActionsDrawer({
 }: TaskActionsDrawerProps) {
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
-    if (! task) {
+    if (!task) {
         return null;
     }
 
@@ -67,14 +61,14 @@ export default function TaskActionsDrawer({
                             className="justify-start rounded-2xl"
                             onClick={() => {
                                 closeDrawer();
-                                router.visit(`/tasks/${task.public_id}/edit`);
+                                router.visit(`/tasks/${task.id}/edit`);
                             }}
                         >
                             <Pencil className="size-4" />
                             Edit task
                         </Button>
 
-                        {! task.deleted_at ? (
+                        {!task.deleted_at ? (
                             <Button
                                 type="button"
                                 variant="outline"
@@ -82,7 +76,7 @@ export default function TaskActionsDrawer({
                                 onClick={() => {
                                     closeDrawer();
                                     router.patch(
-                                        `/tasks/${task.public_id}/pause`,
+                                        `/tasks/${task.id}/pause`,
                                         { redirect_to: redirectTo },
                                         { preserveScroll: true },
                                     );
@@ -104,7 +98,7 @@ export default function TaskActionsDrawer({
                             onClick={() => {
                                 closeDrawer();
                                 router.post(
-                                    `/tasks/${task.public_id}/duplicate`,
+                                    `/tasks/${task.id}/duplicate`,
                                     { redirect_to: redirectTo },
                                     { preserveScroll: true },
                                 );
@@ -114,7 +108,7 @@ export default function TaskActionsDrawer({
                             Duplikat task
                         </Button>
 
-                        {! task.deleted_at ? (
+                        {!task.deleted_at ? (
                             <Button
                                 type="button"
                                 variant="outline"
@@ -148,8 +142,8 @@ export default function TaskActionsDrawer({
                     <AlertDialogHeader>
                         <AlertDialogTitle>Hapus task ini?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Task akan dipindahkan ke arsip dan tidak lagi digenerate
-                            untuk hari berikutnya.
+                            Task akan dipindahkan ke arsip dan tidak lagi
+                            digenerate untuk hari berikutnya.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -159,7 +153,7 @@ export default function TaskActionsDrawer({
                             onClick={() => {
                                 setConfirmDeleteOpen(false);
                                 closeDrawer();
-                                router.delete(`/tasks/${task.public_id}`, {
+                                router.delete(`/tasks/${task.id}`, {
                                     data: { redirect_to: redirectTo },
                                     preserveScroll: true,
                                 });

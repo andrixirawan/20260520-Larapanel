@@ -148,13 +148,12 @@ class TaskController extends Controller
         $task->loadMissing('category');
 
         $duplicate = $task->replicate([
-            'public_id',
+            'id',
             'created_at',
             'updated_at',
             'deleted_at',
         ]);
 
-        $duplicate->public_id = (string) Str::ulid();
         $duplicate->name = __(':name (Copy)', ['name' => $task->name]);
         $duplicate->is_active = true;
         $duplicate->deleted_at = null;

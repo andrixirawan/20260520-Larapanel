@@ -5,7 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import type { HistoryDaySummary, TaskInstance } from '@/features/daily-quest/types';
+import type {
+    HistoryDaySummary,
+    TaskInstance,
+} from '@/features/daily-quest/types';
 import { formatHistoryDayLabel } from '@/features/daily-quest/utils';
 
 type HistoryShowProps = {
@@ -23,7 +26,8 @@ function DetailInstanceRow({ instance }: { instance: TaskInstance }) {
             <div
                 className="flex size-12 shrink-0 items-center justify-center rounded-2xl text-xl text-white"
                 style={{
-                    backgroundColor: task?.color ?? task?.category?.color ?? '#0f172a',
+                    backgroundColor:
+                        task?.color ?? task?.category?.color ?? '#0f172a',
                 }}
             >
                 {task?.icon ?? task?.category?.icon ?? '📝'}
@@ -53,7 +57,9 @@ function DetailInstanceRow({ instance }: { instance: TaskInstance }) {
                 </div>
 
                 <p className="text-sm text-muted-foreground">
-                    {task?.description || task?.recurrence_summary || 'Task harian'}
+                    {task?.description ||
+                        task?.recurrence_summary ||
+                        'Task harian'}
                 </p>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -89,7 +95,12 @@ export default function DailyQuestHistoryShow({
             <Head title="History Detail" />
 
             <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-5 sm:px-6">
-                <Button asChild type="button" variant="ghost" className="w-fit rounded-full">
+                <Button
+                    asChild
+                    type="button"
+                    variant="ghost"
+                    className="w-fit rounded-full"
+                >
                     <Link href="/history">
                         <ArrowLeft className="size-4" />
                         Kembali ke history
@@ -104,7 +115,7 @@ export default function DailyQuestHistoryShow({
                 <Card className="overflow-hidden border-0 bg-[linear-gradient(135deg,#f59e0b_0%,#fb7185_55%,#0ea5e9_100%)] py-0 text-white shadow-xl">
                     <CardContent className="grid gap-4 px-5 py-5 sm:grid-cols-3 sm:px-6">
                         <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-white/65">
+                            <p className="text-xs tracking-[0.18em] text-white/65 uppercase">
                                 Completion
                             </p>
                             <p className="mt-2 text-3xl font-semibold">
@@ -116,7 +127,7 @@ export default function DailyQuestHistoryShow({
                             />
                         </div>
                         <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-white/65">
+                            <p className="text-xs tracking-[0.18em] text-white/65 uppercase">
                                 Task selesai
                             </p>
                             <p className="mt-2 text-3xl font-semibold">
@@ -124,7 +135,7 @@ export default function DailyQuestHistoryShow({
                             </p>
                         </div>
                         <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-white/65">
+                            <p className="text-xs tracking-[0.18em] text-white/65 uppercase">
                                 Poin hari itu
                             </p>
                             <p className="mt-2 text-3xl font-semibold">
@@ -137,7 +148,7 @@ export default function DailyQuestHistoryShow({
                 <section className="space-y-3">
                     {instances.map((instance) => (
                         <DetailInstanceRow
-                            key={instance.public_id}
+                            key={instance.id}
                             instance={instance}
                         />
                     ))}

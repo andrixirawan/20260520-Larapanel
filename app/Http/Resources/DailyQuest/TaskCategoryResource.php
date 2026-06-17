@@ -17,7 +17,7 @@ class TaskCategoryResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'public_id' => $this->public_id,
+            'id' => $this->id,
             'name' => $this->name,
             'color' => $this->color,
             'icon' => $this->icon,

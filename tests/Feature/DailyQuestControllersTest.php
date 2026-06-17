@@ -45,7 +45,7 @@ test('authenticated user can manage task categories', function () {
         );
 
     $this->actingAs($user)
-        ->patch("/categories/{$category->public_id}", [
+        ->patch("/categories/{$category->id}", [
             'name' => 'Fitness',
             'color' => '#16a34a',
             'icon' => '🏃',
@@ -55,7 +55,7 @@ test('authenticated user can manage task categories', function () {
     expect($category->fresh()->name)->toBe('Fitness');
 
     $this->actingAs($user)
-        ->delete("/categories/{$category->public_id}")
+        ->delete("/categories/{$category->id}")
         ->assertRedirect();
 
     expect(TaskCategory::query()->count())->toBe(0);
@@ -76,7 +76,7 @@ test('authenticated user can create update and archive tasks', function () {
             'icon' => '📖',
             'color' => '#2563eb',
             'points' => 15,
-            'category_public_id' => $category->public_id,
+            'category_id' => $category->id,
             'recurrence_type' => 'specific_days',
             'recurrence_days' => ['Mon', 'Wed', 'Fri'],
             'is_active' => true,
@@ -100,7 +100,7 @@ test('authenticated user can create update and archive tasks', function () {
             'icon' => '📘',
             'color' => '#1d4ed8',
             'points' => 20,
-            'category_public_id' => $category->public_id,
+            'category_id' => $category->id,
             'recurrence_type' => 'daily',
             'recurrence_days' => [],
             'is_active' => true,
@@ -203,14 +203,14 @@ test('task instances can be completed and uncompleted for today only', function 
     ]);
 
     $this->actingAs($user)
-        ->patch("/instances/{$instance->public_id}/complete")
+        ->patch("/instances/{$instance->id}/complete")
         ->assertRedirect();
 
     expect($instance->fresh()->points_awarded)->toBe(25)
         ->and($user->fresh()->total_points)->toBe(25);
 
     $this->actingAs($user)
-        ->patch("/instances/{$instance->public_id}/uncomplete")
+        ->patch("/instances/{$instance->id}/uncomplete")
         ->assertRedirect();
 
     expect($instance->fresh()->completed_at)->toBeNull()
