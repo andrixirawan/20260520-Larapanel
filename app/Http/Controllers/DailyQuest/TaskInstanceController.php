@@ -68,9 +68,19 @@ class TaskInstanceController extends Controller
 
     private function resolveOwnedInstance(Request $request, string $identifier): TaskInstance
     {
+        $today = now($request->user()->timezone)->toDateString();
+
         $instance = $request->user()
             ->taskInstances()
-            ->whereKey($identifier)
+            ->where(function ($query) use ($identifier, $today): void {
+                $query
+                    ->whereKey($identifier)
+                    ->orWhere(function ($query) use ($identifier, $today): void {
+                        $query
+                            ->where('task_id', $identifier)
+                            ->whereDate('scheduled_date', $today);
+                    });
+            })
             ->first();
 
         abort_unless($instance instanceof TaskInstance, 404);

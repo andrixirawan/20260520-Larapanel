@@ -218,6 +218,31 @@ test('task instances can be completed and uncompleted for today only', function 
         ->and($user->fresh()->total_points)->toBe(0);
 });
 
+test('today task instance completion also accepts the task id for todays instance', function () {
+    Carbon::setTestNow('2026-06-17 08:00:00');
+
+    $user = User::factory()->create(['timezone' => 'Asia/Jakarta']);
+    $task = makeDailyQuestTask($user, ['points' => 30]);
+
+    TaskInstance::query()->create([
+        'task_id' => $task->id,
+        'user_id' => $user->id,
+        'scheduled_date' => '2026-06-17',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/instances/{$task->id}/complete")
+        ->assertRedirect();
+
+    $instance = TaskInstance::query()
+        ->where('task_id', $task->id)
+        ->whereDate('scheduled_date', '2026-06-17')
+        ->firstOrFail();
+
+    expect($instance->completed_at)->not->toBeNull()
+        ->and($instance->points_awarded)->toBe(30);
+});
+
 test('history and dashboard pages expose daily quest summaries', function () {
     Carbon::setTestNow('2026-06-17 08:00:00');
 
