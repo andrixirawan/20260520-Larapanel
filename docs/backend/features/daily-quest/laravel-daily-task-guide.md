@@ -224,6 +224,23 @@ Route::middleware(['auth'])->group(function () {
 });
 ```
 
+Current implementation in this repo uses a dedicated route file:
+
+```php
+// routes/web/daily-quest.php
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('today', [TodayController::class, 'index'])->name('today');
+    Route::patch('instances/{instance}/complete', [TaskInstanceController::class, 'complete'])->name('instances.complete');
+    Route::patch('instances/{instance}/uncomplete', [TaskInstanceController::class, 'uncomplete'])->name('instances.uncomplete');
+    Route::resource('tasks', TaskController::class);
+    Route::get('history', [HistoryController::class, 'index'])->name('history');
+    Route::get('history/{date}', [HistoryController::class, 'show'])->name('history.show');
+    Route::resource('categories', CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
+});
+```
+
 ---
 
 ## 7. UI Pages & Components

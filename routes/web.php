@@ -22,8 +22,6 @@ Route::get('auth/google/redirect', [GoogleOAuthController::class, 'redirect'])
     ->name('auth.google.mobile.redirect');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
-
     Route::get('users', [UserManagementController::class, 'index'])
         ->middleware('can:'.AccessControl::PERMISSION_USERS_MANAGE)
         ->name('users.index');
@@ -110,4 +108,5 @@ Route::get('debug/avatar-storage', AvatarStorageController::class)
     ->name('debug.avatar-storage');
 
 require __DIR__.'/web/post.php';
+require __DIR__.'/web/daily-quest.php';
 require __DIR__.'/settings.php';

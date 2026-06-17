@@ -88,17 +88,28 @@ class UpdateUserStatsJob implements ShouldQueue
             ->whereNotNull('completed_at')
             ->sum('points_awarded');
 
-        UserDailyStat::query()->updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'date' => $date,
-            ],
-            [
+        $dailyStat = UserDailyStat::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->first();
+
+        if ($dailyStat) {
+            $dailyStat->update([
                 'total_tasks' => $totalTasks,
                 'completed_tasks' => $completedTasks,
                 'points_earned' => $pointsEarned,
-            ],
-        );
+            ]);
+
+            return;
+        }
+
+        UserDailyStat::query()->create([
+            'user_id' => $user->id,
+            'date' => $date,
+            'total_tasks' => $totalTasks,
+            'completed_tasks' => $completedTasks,
+            'points_earned' => $pointsEarned,
+        ]);
     }
 
     /**

@@ -290,14 +290,14 @@ App
 
 #### Phase 3 — API / Controller
 
-- [ ] `TaskCategoryController` (index, store, update, destroy)
-- [ ] `TaskController` (index, create, store, show, edit, update, destroy dengan soft-delete)
-- [ ] `TodayController@index` — ambil instances hari ini beserta stats
-- [ ] `TaskInstanceController@complete` — set `completed_at`, award points
-- [ ] `TaskInstanceController@uncomplete` — unset `completed_at`, revoke points
-- [ ] `HistoryController@index` — list tanggal + summary stats per hari
-- [ ] `HistoryController@show` — detail instances per tanggal
-- [ ] `DashboardController@index` — stats streak, poin, chart mingguan
+- [x] `TaskCategoryController` (index, store, update, destroy)
+- [x] `TaskController` (index, create, store, show, edit, update, destroy dengan soft-delete)
+- [x] `TodayController@index` — ambil instances hari ini beserta stats
+- [x] `TaskInstanceController@complete` — set `completed_at`, award points
+- [x] `TaskInstanceController@uncomplete` — unset `completed_at`, revoke points
+- [x] `HistoryController@index` — list tanggal + summary stats per hari
+- [x] `HistoryController@show` — detail instances per tanggal
+- [x] `DashboardController@index` — stats streak, poin, chart mingguan
 
 #### Phase 4 — API Resources & Validation
 
