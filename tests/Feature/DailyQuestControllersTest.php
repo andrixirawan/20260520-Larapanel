@@ -45,7 +45,7 @@ test('authenticated user can manage task categories', function () {
         );
 
     $this->actingAs($user)
-        ->patch(route('categories.update', $category), [
+        ->patch("/categories/{$category->public_id}", [
             'name' => 'Fitness',
             'color' => '#16a34a',
             'icon' => '🏃',
@@ -55,7 +55,7 @@ test('authenticated user can manage task categories', function () {
     expect($category->fresh()->name)->toBe('Fitness');
 
     $this->actingAs($user)
-        ->delete(route('categories.destroy', $category))
+        ->delete("/categories/{$category->public_id}")
         ->assertRedirect();
 
     expect(TaskCategory::query()->count())->toBe(0);
@@ -203,14 +203,14 @@ test('task instances can be completed and uncompleted for today only', function 
     ]);
 
     $this->actingAs($user)
-        ->patch(route('instances.complete', $instance))
+        ->patch("/instances/{$instance->public_id}/complete")
         ->assertRedirect();
 
     expect($instance->fresh()->points_awarded)->toBe(25)
         ->and($user->fresh()->total_points)->toBe(25);
 
     $this->actingAs($user)
-        ->patch(route('instances.uncomplete', $instance))
+        ->patch("/instances/{$instance->public_id}/uncomplete")
         ->assertRedirect();
 
     expect($instance->fresh()->completed_at)->toBeNull()

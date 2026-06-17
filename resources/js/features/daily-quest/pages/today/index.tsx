@@ -144,7 +144,7 @@ export default function DailyQuestTodayIndex({
             {},
             {
                 preserveScroll: true,
-                preserveState: true,
+                preserveState: false,
                 onError: () => {
                     startTransition(() => {
                         setOptimisticInstances(previousInstances);
