@@ -331,18 +331,18 @@ App
 
 #### Phase 3 — Task Management Pages
 
-- [ ] Halaman `Tasks/Index.tsx` (list task dengan tab Aktif/Dijeda/Arsip)
-- [ ] Komponen `TaskCard.tsx` (nama, ikon, recurrence summary, poin, status)
-- [ ] Swipe/long-press → bottom sheet: Edit, Jeda, Duplikat, Hapus
-- [ ] `AlertDialog` konfirmasi hapus task
-- [ ] FAB `+` navigate ke Create page
-- [ ] Halaman `Tasks/Create.tsx` (form lengkap)
-- [ ] Halaman `Tasks/Edit.tsx` (form sama, pre-filled)
-- [ ] Komponen `RecurrenceForm.tsx` (reusable, animated kondisional sub-input)
-- [ ] Komponen `EmojiPicker.tsx` (dalam Dialog / bottom sheet)
-- [ ] Komponen `ColorPicker.tsx` (dalam Popover)
-- [ ] Komponen `CategoryPicker.tsx` (dalam bottom sheet searchable)
-- [ ] `DatePicker` untuk recurrence one-time / date range
+- [x] Halaman `Tasks/Index.tsx` (list task dengan tab Aktif/Dijeda/Arsip)
+- [x] Komponen `TaskCard.tsx` (nama, ikon, recurrence summary, poin, status)
+- [x] Swipe/long-press → bottom sheet: Edit, Jeda, Duplikat, Hapus
+- [x] `AlertDialog` konfirmasi hapus task
+- [x] FAB `+` navigate ke Create page
+- [x] Halaman `Tasks/Create.tsx` (form lengkap)
+- [x] Halaman `Tasks/Edit.tsx` (form sama, pre-filled)
+- [x] Komponen `RecurrenceForm.tsx` (reusable, animated kondisional sub-input)
+- [x] Komponen `EmojiPicker.tsx` (dalam Dialog / bottom sheet)
+- [x] Komponen `ColorPicker.tsx` (dalam Popover)
+- [x] Komponen `CategoryPicker.tsx` (dalam bottom sheet searchable)
+- [x] `DatePicker` untuk recurrence one-time / date range
 
 #### Phase 4 — History Page
 
@@ -436,26 +436,26 @@ App
 
 #### Task — Core
 
-- [ ] User bisa membuat task dengan nama
-- [ ] User bisa memilih task berulang setiap hari (daily)
-- [ ] User bisa memilih task berulang di hari-hari tertentu (Senin, Rabu, Jumat, dll)
-- [ ] User bisa membuat task yang hanya terjadi sekali (one-time)
-- [ ] User bisa membuat task yang aktif N hari ke depan
-- [ ] User bisa membuat task dengan rentang tanggal tertentu
-- [ ] User bisa menambah poin reward ke task
-- [ ] User bisa menghapus task (soft-delete)
-- [ ] Task yang dihapus berhenti muncul di hari ini dan ke depan
+- [x] User bisa membuat task dengan nama
+- [x] User bisa memilih task berulang setiap hari (daily)
+- [x] User bisa memilih task berulang di hari-hari tertentu (Senin, Rabu, Jumat, dll)
+- [x] User bisa membuat task yang hanya terjadi sekali (one-time)
+- [x] User bisa membuat task yang aktif N hari ke depan
+- [x] User bisa membuat task dengan rentang tanggal tertentu
+- [x] User bisa menambah poin reward ke task
+- [x] User bisa menghapus task (soft-delete)
+- [x] Task yang dihapus berhenti muncul di hari ini dan ke depan
 - [ ] Task yang dihapus masih terlihat di histori hari-hari sebelumnya
 
 #### Task — Additional
 
-- [ ] User bisa mengedit task yang sudah ada
-- [ ] User bisa menjeda task (pause — tidak digenerate tapi tidak dihapus)
-- [ ] User bisa mengaktifkan kembali task yang dijeda
-- [ ] User bisa menduplikat task
-- [ ] User bisa menambah ikon/emoji ke task
-- [ ] User bisa memilih warna aksen task
-- [ ] User bisa menambah deskripsi task
+- [x] User bisa mengedit task yang sudah ada
+- [x] User bisa menjeda task (pause — tidak digenerate tapi tidak dihapus)
+- [x] User bisa mengaktifkan kembali task yang dijeda
+- [x] User bisa menduplikat task
+- [x] User bisa menambah ikon/emoji ke task
+- [x] User bisa memilih warna aksen task
+- [x] User bisa menambah deskripsi task
 
 #### Kategori
 

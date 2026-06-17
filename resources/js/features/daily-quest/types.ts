@@ -3,7 +3,19 @@ export type TaskCategory = {
     name: string;
     color: string | null;
     icon: string | null;
+    tasks_count?: number;
+    created_at?: string | null;
+    updated_at?: string | null;
 };
+
+export type RecurrenceType =
+    | 'daily'
+    | 'specific_days'
+    | 'one_time'
+    | 'x_days'
+    | 'date_range';
+
+export type TaskStatusTab = 'active' | 'paused' | 'archived';
 
 export type DailyQuestTask = {
     public_id: string;
@@ -12,7 +24,7 @@ export type DailyQuestTask = {
     icon: string | null;
     color: string | null;
     points: number;
-    recurrence_type: string;
+    recurrence_type: RecurrenceType;
     recurrence_days: string[] | null;
     recurrence_starts_at: string | null;
     recurrence_ends_at: string | null;
@@ -20,6 +32,8 @@ export type DailyQuestTask = {
     is_active: boolean;
     deleted_at: string | null;
     category: TaskCategory | null;
+    created_at?: string | null;
+    updated_at?: string | null;
 };
 
 export type TaskInstance = {

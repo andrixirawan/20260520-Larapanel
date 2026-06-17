@@ -121,6 +121,50 @@ class TaskController extends Controller
         return $this->redirectAfterMutation($request);
     }
 
+    public function pause(Request $request, Task $task): RedirectResponse
+    {
+        $this->ensureOwnedTask($request, $task);
+
+        abort_if($task->trashed(), 404);
+
+        $task->update([
+            'is_active' => ! $task->is_active,
+        ]);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $task->is_active
+                ? __('Task resumed.')
+                : __('Task paused.'),
+        ]);
+
+        return $this->redirectAfterMutation($request);
+    }
+
+    public function duplicate(Request $request, Task $task): RedirectResponse
+    {
+        $this->ensureOwnedTask($request, $task);
+
+        $task->loadMissing('category');
+
+        $duplicate = $task->replicate([
+            'public_id',
+            'created_at',
+            'updated_at',
+            'deleted_at',
+        ]);
+
+        $duplicate->public_id = (string) Str::ulid();
+        $duplicate->name = __(':name (Copy)', ['name' => $task->name]);
+        $duplicate->is_active = true;
+        $duplicate->deleted_at = null;
+        $duplicate->save();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Task duplicated.')]);
+
+        return $this->redirectAfterMutation($request);
+    }
+
     private function ensureOwnedTask(Request $request, Task $task): void
     {
         abort_unless($task->user_id === $request->user()->id, 404);

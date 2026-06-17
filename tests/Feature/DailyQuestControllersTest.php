@@ -116,6 +116,54 @@ test('authenticated user can create update and archive tasks', function () {
     expect($task->fresh()->trashed())->toBeTrue();
 });
 
+test('authenticated user can pause and duplicate tasks', function () {
+    $user = User::factory()->create();
+    $category = $user->categories()->create([
+        'name' => 'Health',
+        'color' => '#22c55e',
+        'icon' => '💪',
+    ]);
+    $task = makeDailyQuestTask($user, [
+        'category_id' => $category->id,
+        'name' => 'Drink water',
+        'description' => 'Two liters.',
+        'icon' => '💧',
+        'color' => '#0ea5e9',
+        'points' => 12,
+        'recurrence_type' => 'specific_days',
+        'recurrence_days' => ['Mon', 'Wed', 'Fri'],
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('tasks.pause', $task), [
+            'redirect_to' => '/tasks?status=active',
+        ])
+        ->assertRedirect('/tasks?status=active');
+
+    expect($task->fresh()->is_active)->toBeFalse();
+
+    $this->actingAs($user)
+        ->post(route('tasks.duplicate', $task), [
+            'redirect_to' => '/tasks?status=paused',
+        ])
+        ->assertRedirect('/tasks?status=paused');
+
+    expect(Task::query()->count())->toBe(2);
+
+    $duplicate = Task::query()
+        ->where('id', '!=', $task->id)
+        ->firstOrFail();
+
+    expect($duplicate->name)->toBe('Drink water (Copy)')
+        ->and($duplicate->description)->toBe('Two liters.')
+        ->and($duplicate->icon)->toBe('💧')
+        ->and($duplicate->color)->toBe('#0ea5e9')
+        ->and($duplicate->points)->toBe(12)
+        ->and($duplicate->recurrence_days)->toBe(['Mon', 'Wed', 'Fri'])
+        ->and($duplicate->category_id)->toBe($category->id)
+        ->and($duplicate->is_active)->toBeTrue();
+});
+
 test('today page returns todays instances and completion stats', function () {
     Carbon::setTestNow('2026-06-17 08:00:00');
 

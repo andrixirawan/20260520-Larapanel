@@ -15,6 +15,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('instances/{instance}/complete', [TaskInstanceController::class, 'complete'])->name('instances.complete');
     Route::patch('instances/{instance}/uncomplete', [TaskInstanceController::class, 'uncomplete'])->name('instances.uncomplete');
 
+    Route::patch('tasks/{task}/pause', [TaskController::class, 'pause'])->name('tasks.pause');
+    Route::post('tasks/{task}/duplicate', [TaskController::class, 'duplicate'])->name('tasks.duplicate');
     Route::resource('tasks', TaskController::class);
 
     Route::get('history', [HistoryController::class, 'index'])->name('history');
