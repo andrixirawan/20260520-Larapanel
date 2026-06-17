@@ -1,20 +1,400 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import {
+    CheckCircle2,
+    ChevronDown,
+    ChevronUp,
+    Plus,
+    Sparkles,
+    Target,
+} from 'lucide-react';
+import {
+    startTransition,
+    useEffect,
+    useMemo,
+    useState,
+} from 'react';
+import Heading from '@/components/heading';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Progress } from '@/components/ui/progress';
+import QuickAddTaskDrawer from '@/features/daily-quest/components/quick-add-task-drawer';
+import TaskInstanceOptionsDrawer from '@/features/daily-quest/components/task-instance-options-drawer';
+import TaskItem from '@/features/daily-quest/components/task-item';
+import type { TaskInstance, TodayStats } from '@/features/daily-quest/types';
 
 type TodayPageProps = {
     date: string;
-    instances: Array<Record<string, unknown>>;
-    stats: Record<string, unknown>;
+    instances: TaskInstance[];
+    stats: TodayStats;
     streak: number;
 };
 
-export default function DailyQuestTodayIndex(props: TodayPageProps) {
+function calculateStats(date: string, instances: TaskInstance[]): TodayStats {
+    const completedInstances = instances.filter(
+        (instance) => instance.completed_at !== null,
+    );
+
+    return {
+        date,
+        total_tasks: instances.length,
+        completed_tasks: completedInstances.length,
+        points_earned: completedInstances.reduce(
+            (sum, instance) => sum + (instance.points_awarded ?? 0),
+            0,
+        ),
+        completion_rate:
+            instances.length > 0
+                ? Math.round((completedInstances.length / instances.length) * 100)
+                : 0,
+    };
+}
+
+function formatTodayLabel(date: string) {
+    return new Intl.DateTimeFormat('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+    }).format(new Date(`${date}T00:00:00`));
+}
+
+export default function DailyQuestTodayIndex({
+    date,
+    instances,
+    stats,
+    streak,
+}: TodayPageProps) {
+    const [quickAddOpen, setQuickAddOpen] = useState(false);
+    const [optionsOpen, setOptionsOpen] = useState(false);
+    const [completedOpen, setCompletedOpen] = useState(true);
+    const [selectedInstance, setSelectedInstance] = useState<TaskInstance | null>(
+        null,
+    );
+    const [optimisticInstances, setOptimisticInstances] =
+        useState<TaskInstance[]>(instances);
+    const [pendingIds, setPendingIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        setOptimisticInstances(instances);
+    }, [instances]);
+
+    const currentStats = useMemo(() => {
+        if (optimisticInstances === instances) {
+            return stats;
+        }
+
+        return calculateStats(date, optimisticInstances);
+    }, [date, instances, optimisticInstances, stats]);
+
+    const pendingInstances = useMemo(
+        () =>
+            optimisticInstances.filter((instance) => instance.completed_at === null),
+        [optimisticInstances],
+    );
+    const completedInstances = useMemo(
+        () =>
+            optimisticInstances.filter((instance) => instance.completed_at !== null),
+        [optimisticInstances],
+    );
+
+    const allCompleted =
+        currentStats.total_tasks > 0 &&
+        currentStats.completed_tasks === currentStats.total_tasks;
+
+    const toggleInstance = (instance: TaskInstance) => {
+        if (pendingIds.includes(instance.public_id)) {
+            return;
+        }
+
+        const willComplete = instance.completed_at === null;
+        const previousInstances = optimisticInstances;
+
+        setPendingIds((current) => [...current, instance.public_id]);
+        startTransition(() => {
+            setOptimisticInstances((current) =>
+                current.map((currentInstance) =>
+                    currentInstance.public_id !== instance.public_id
+                        ? currentInstance
+                        : {
+                              ...currentInstance,
+                              completed_at: willComplete
+                                  ? new Date().toISOString()
+                                  : null,
+                              points_awarded: willComplete
+                                  ? currentInstance.task?.points ?? 0
+                                  : null,
+                          },
+                ),
+            );
+        });
+
+        router.patch(
+            `/instances/${instance.public_id}/${willComplete ? 'complete' : 'uncomplete'}`,
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onError: () => {
+                    startTransition(() => {
+                        setOptimisticInstances(previousInstances);
+                    });
+                },
+                onFinish: () => {
+                    setPendingIds((current) =>
+                        current.filter((id) => id !== instance.public_id),
+                    );
+                },
+            },
+        );
+    };
+
     return (
         <>
             <Head title="Today" />
-            <div className="space-y-4 p-4">
-                <h1 className="text-2xl font-semibold">Today</h1>
-                <pre className="overflow-auto rounded-lg border p-4 text-sm">{JSON.stringify(props, null, 2)}</pre>
+
+            <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-5 sm:px-6">
+                <Card className="overflow-hidden border-0 bg-[linear-gradient(135deg,#f59e0b_0%,#fb7185_50%,#38bdf8_100%)] py-0 text-white shadow-xl">
+                    <CardHeader className="gap-4 px-5 py-5 sm:px-6">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                            <div className="space-y-1">
+                                <p className="text-sm/none font-medium uppercase tracking-[0.22em] text-white/70">
+                                    Today
+                                </p>
+                                <CardTitle className="text-3xl font-semibold capitalize">
+                                    {formatTodayLabel(date)}
+                                </CardTitle>
+                                <CardDescription className="max-w-xl text-white/80">
+                                    {currentStats.total_tasks > 0
+                                        ? 'Selesaikan task penting dulu, sisanya akan terasa lebih ringan.'
+                                        : 'Belum ada task untuk hari ini. Tambah satu task kecil untuk memulai momentum.'}
+                                </CardDescription>
+                            </div>
+
+                            <div className="flex items-center gap-2 rounded-full bg-white/14 px-4 py-2 backdrop-blur-sm">
+                                <Sparkles className="size-4" />
+                                <span className="text-sm font-medium">
+                                    {streak} hari streak
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="rounded-2xl bg-white/12 p-4 backdrop-blur-sm">
+                                <p className="text-xs uppercase tracking-[0.18em] text-white/70">
+                                    Progress
+                                </p>
+                                <p className="mt-2 text-2xl font-semibold">
+                                    {currentStats.completed_tasks}/{currentStats.total_tasks}
+                                </p>
+                                <Progress
+                                    value={currentStats.completion_rate}
+                                    className="mt-3 h-2.5 bg-white/20 [&_[data-slot=progress-indicator]]:bg-white"
+                                />
+                            </div>
+
+                            <div className="rounded-2xl bg-white/12 p-4 backdrop-blur-sm">
+                                <p className="text-xs uppercase tracking-[0.18em] text-white/70">
+                                    Points hari ini
+                                </p>
+                                <p className="mt-2 text-2xl font-semibold">
+                                    {currentStats.points_earned}
+                                </p>
+                                <p className="mt-2 text-sm text-white/80">
+                                    Kumpulkan poin dari task selesai.
+                                </p>
+                            </div>
+
+                            <div className="rounded-2xl bg-white/12 p-4 backdrop-blur-sm">
+                                <p className="text-xs uppercase tracking-[0.18em] text-white/70">
+                                    Target tersisa
+                                </p>
+                                <p className="mt-2 text-2xl font-semibold">
+                                    {pendingInstances.length}
+                                </p>
+                                <p className="mt-2 text-sm text-white/80">
+                                    Fokus pada task yang masih pending.
+                                </p>
+                            </div>
+                        </div>
+                    </CardHeader>
+                </Card>
+
+                {allCompleted ? (
+                    <Card className="border-emerald-200 bg-emerald-50 py-0 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/40">
+                        <CardContent className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                            <div className="flex items-start gap-3">
+                                <div className="rounded-full bg-emerald-500 p-2 text-white shadow-lg">
+                                    <CheckCircle2 className="size-5" />
+                                </div>
+                                <div>
+                                    <p className="text-base font-semibold text-emerald-900 dark:text-emerald-100">
+                                        Semua task hari ini selesai.
+                                    </p>
+                                    <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                                        Progress penuh, streak aman, dan poin hari ini sudah terkunci.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <Badge className="rounded-full bg-emerald-600 px-3 py-1.5 text-white">
+                                +{currentStats.points_earned} pts
+                            </Badge>
+                        </CardContent>
+                    </Card>
+                ) : null}
+
+                {currentStats.total_tasks === 0 ? (
+                    <Card className="border-dashed border-slate-300 bg-[radial-gradient(circle_at_top,#fef3c7,transparent_40%),linear-gradient(180deg,#fff,#f8fafc)] py-0 shadow-sm dark:border-slate-700 dark:bg-[radial-gradient(circle_at_top,#422006,transparent_30%),linear-gradient(180deg,#0f172a,#020617)]">
+                        <CardContent className="flex flex-col items-start gap-5 px-5 py-8 sm:px-6">
+                            <div className="rounded-2xl bg-slate-950 p-3 text-amber-300 dark:bg-white dark:text-slate-950">
+                                <Target className="size-6" />
+                            </div>
+                            <div className="space-y-2">
+                                <Heading
+                                    title="Belum ada task untuk hari ini"
+                                    description="Mulai dari satu task kecil. Quick add di bawah akan langsung membuat task baru dan memasukkannya ke daftar hari ini."
+                                    variant="small"
+                                />
+                            </div>
+                            <Button
+                                type="button"
+                                size="lg"
+                                className="rounded-full"
+                                onClick={() => setQuickAddOpen(true)}
+                            >
+                                <Plus className="size-4" />
+                                Tambah task pertama
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <div className="space-y-4">
+                        <section className="space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <Heading
+                                    title="Belum selesai"
+                                    description="Task prioritas yang masih bisa kamu centang hari ini."
+                                    variant="small"
+                                />
+                                <Badge
+                                    variant="outline"
+                                    className="rounded-full px-2.5 py-1"
+                                >
+                                    {pendingInstances.length} task
+                                </Badge>
+                            </div>
+
+                            <div className="space-y-3">
+                                {pendingInstances.map((instance) => (
+                                    <TaskItem
+                                        key={instance.public_id}
+                                        instance={instance}
+                                        busy={pendingIds.includes(
+                                            instance.public_id,
+                                        )}
+                                        onToggle={toggleInstance}
+                                        onOpenOptions={(nextInstance) => {
+                                            setSelectedInstance(nextInstance);
+                                            setOptionsOpen(true);
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </section>
+
+                        <Collapsible
+                            open={completedOpen}
+                            onOpenChange={setCompletedOpen}
+                            className="rounded-3xl border bg-background/90 p-4 shadow-sm backdrop-blur-sm"
+                        >
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-sm font-semibold">Selesai</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Task yang sudah kamu amankan hari ini.
+                                    </p>
+                                </div>
+
+                                <CollapsibleTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="rounded-full"
+                                    >
+                                        {completedInstances.length} task
+                                        {completedOpen ? (
+                                            <ChevronUp className="size-4" />
+                                        ) : (
+                                            <ChevronDown className="size-4" />
+                                        )}
+                                    </Button>
+                                </CollapsibleTrigger>
+                            </div>
+
+                            <CollapsibleContent className="space-y-3 pt-4">
+                                {completedInstances.map((instance) => (
+                                    <TaskItem
+                                        key={instance.public_id}
+                                        instance={instance}
+                                        busy={pendingIds.includes(
+                                            instance.public_id,
+                                        )}
+                                        onToggle={toggleInstance}
+                                        onOpenOptions={(nextInstance) => {
+                                            setSelectedInstance(nextInstance);
+                                            setOptionsOpen(true);
+                                        }}
+                                    />
+                                ))}
+                            </CollapsibleContent>
+                        </Collapsible>
+                    </div>
+                )}
             </div>
+
+            <div className="pointer-events-none fixed inset-x-0 bottom-6 z-30 flex justify-center px-4">
+                <Button
+                    type="button"
+                    size="lg"
+                    className="pointer-events-auto h-14 rounded-full px-6 shadow-xl"
+                    onClick={() => setQuickAddOpen(true)}
+                >
+                    <Plus className="size-5" />
+                    Tambah task
+                </Button>
+            </div>
+
+            <QuickAddTaskDrawer
+                date={date}
+                open={quickAddOpen}
+                onOpenChange={setQuickAddOpen}
+            />
+
+            <TaskInstanceOptionsDrawer
+                instance={selectedInstance}
+                open={optionsOpen}
+                onOpenChange={setOptionsOpen}
+            />
         </>
     );
 }
+
+DailyQuestTodayIndex.layout = {
+    breadcrumbs: [
+        {
+            title: 'Today',
+            href: '/today',
+        },
+    ],
+};

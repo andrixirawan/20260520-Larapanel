@@ -318,16 +318,16 @@ App
 
 #### Phase 2 — Today Page
 
-- [ ] Halaman `Today/Index.tsx` (render list instances)
-- [ ] Komponen `TaskItem.tsx` (checkbox, nama, ikon, poin, animasi centang)
-- [ ] Toggle complete/uncomplete dengan optimistic update
-- [ ] Grup "Belum selesai" dan "Selesai" (collapsible section)
-- [ ] Progress bar + stats header (completion, poin, streak)
-- [ ] FAB `+` yang memanggil bottom sheet
-- [ ] Bottom sheet "Tambah Task Cepat" (nama + recurrence satu klik)
-- [ ] Bottom sheet opsi item (long press / swipe): catatan, skip, lihat detail
-- [ ] Empty state jika tidak ada task hari ini
-- [ ] Celebration state jika semua task selesai
+- [x] Halaman `Today/Index.tsx` (render list instances)
+- [x] Komponen `TaskItem.tsx` (checkbox, nama, ikon, poin, animasi centang)
+- [x] Toggle complete/uncomplete dengan optimistic update
+- [x] Grup "Belum selesai" dan "Selesai" (collapsible section)
+- [x] Progress bar + stats header (completion, poin, streak)
+- [x] FAB `+` yang memanggil bottom sheet
+- [x] Bottom sheet "Tambah Task Cepat" (nama + recurrence satu klik)
+- [x] Bottom sheet opsi item (long press / swipe): catatan, skip, lihat detail
+- [x] Empty state jika tidak ada task hari ini
+- [x] Celebration state jika semua task selesai
 
 #### Phase 3 — Task Management Pages
 

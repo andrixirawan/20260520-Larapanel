@@ -22,6 +22,7 @@ class DashboardController extends Controller
         $today = now($user->timezone)->startOfDay();
 
         $this->taskSchedulerService->catchUpForUser($user, $today);
+        $this->taskSchedulerService->generateForDate($user, $today);
 
         $weeklyInstances = TaskInstance::query()
             ->where('user_id', $user->id)

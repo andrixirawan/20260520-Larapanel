@@ -12,6 +12,7 @@ use App\Models\DailyQuest\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -69,7 +70,7 @@ class TaskController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Task created.')]);
 
-        return to_route('tasks.index');
+        return $this->redirectAfterMutation($request);
     }
 
     public function show(Request $request, Task $task): Response
@@ -106,7 +107,7 @@ class TaskController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Task updated.')]);
 
-        return to_route('tasks.index');
+        return $this->redirectAfterMutation($request);
     }
 
     public function destroy(Request $request, Task $task): RedirectResponse
@@ -117,12 +118,27 @@ class TaskController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Task archived.')]);
 
-        return to_route('tasks.index');
+        return $this->redirectAfterMutation($request);
     }
 
     private function ensureOwnedTask(Request $request, Task $task): void
     {
         abort_unless($task->user_id === $request->user()->id, 404);
+    }
+
+    private function redirectAfterMutation(Request $request): RedirectResponse
+    {
+        $redirectTo = $request->string('redirect_to')->toString();
+
+        if (
+            $redirectTo !== '' &&
+            Str::startsWith($redirectTo, '/') &&
+            ! Str::startsWith($redirectTo, '//')
+        ) {
+            return redirect()->to($redirectTo);
+        }
+
+        return to_route('tasks.index');
     }
 
     /**

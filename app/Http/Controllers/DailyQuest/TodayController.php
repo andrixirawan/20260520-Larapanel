@@ -23,6 +23,7 @@ class TodayController extends Controller
         $today = now($user->timezone)->startOfDay();
 
         $this->taskSchedulerService->catchUpForUser($user, $today);
+        $this->taskSchedulerService->generateForDate($user, $today);
 
         $instances = TaskInstance::query()
             ->where('user_id', $user->id)
