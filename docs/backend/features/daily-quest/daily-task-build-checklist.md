@@ -268,16 +268,16 @@ App
 
 #### Phase 1 — Foundation
 
-- [ ] Buat trait `HasPublicId` dengan ULID auto-generate
-- [ ] Migration: `users` (tambah kolom `timezone`, `total_points`, `current_streak`, `longest_streak`, `last_active_date`)
-- [ ] Migration: `task_categories` (id, public_id, user_id, name, color, icon)
-- [ ] Migration: `tasks` (id, public_id, user_id, category_id, name, description, icon, color, points, recurrence_type, recurrence_days, recurrence_ends_at, recurrence_starts_at, is_active, deleted_at)
-- [ ] Migration: `task_instances` (id, public_id, task_id, user_id, scheduled_date, completed_at, points_awarded, notes, + unique constraint)
-- [ ] Migration: `user_daily_stats` (id, user_id, date, total_tasks, completed_tasks, points_earned)
-- [ ] Model `Task` (SoftDeletes, HasPublicId, casts, relasi)
-- [ ] Model `TaskInstance` (HasPublicId, relasi dengan `withTrashed()`)
-- [ ] Model `TaskCategory` (HasPublicId, relasi)
-- [ ] Update Model `User` (relasi, helper method streak)
+- [x] Buat trait `HasPublicId` dengan ULID auto-generate
+- [x] Migration: `users` (tambah kolom `timezone`, `total_points`, `current_streak`, `longest_streak`, `last_active_date`)
+- [x] Migration: `task_categories` (id, public_id, user_id, name, color, icon)
+- [x] Migration: `tasks` (id, public_id, user_id, category_id, name, description, icon, color, points, recurrence_type, recurrence_days, recurrence_ends_at, recurrence_starts_at, is_active, deleted_at)
+- [x] Migration: `task_instances` (id, public_id, task_id, user_id, scheduled_date, completed_at, points_awarded, notes, + unique constraint)
+- [x] Migration: `user_daily_stats` (id, user_id, date, total_tasks, completed_tasks, points_earned)
+- [x] Model `Task` (SoftDeletes, HasPublicId, casts, relasi)
+- [x] Model `TaskInstance` (HasPublicId, relasi dengan `withTrashed()`)
+- [x] Model `TaskCategory` (HasPublicId, relasi)
+- [x] Update Model `User` (relasi, helper method streak)
 
 #### Phase 2 — Core Logic
 
@@ -290,7 +290,6 @@ App
 
 #### Phase 3 — API / Controller
 
-- [ ] Auth: Register, Login, Logout (Laravel Breeze atau manual)
 - [ ] `TaskCategoryController` (index, store, update, destroy)
 - [ ] `TaskController` (index, create, store, show, edit, update, destroy dengan soft-delete)
 - [ ] `TodayController@index` — ambil instances hari ini beserta stats
@@ -315,15 +314,7 @@ App
 
 #### Phase 1 — Setup
 
-- [ ] Install & konfigurasi Inertia.js di Laravel
-- [ ] Setup React + TypeScript + Vite
-- [ ] Install & setup shadcn/ui (pilih tema, set CSS variables)
-- [ ] Install Tailwind CSS, konfigurasi `tailwind.config` sesuai design tokens
-- [ ] Setup `ziggy` untuk named routes di React
-- [ ] Buat tipe TypeScript: `Task`, `TaskInstance`, `TaskCategory`, `User`, `DailyStats`
-- [ ] Buat `AppLayout.tsx`: sidebar desktop + bottom nav mobile
-- [ ] Buat komponen `BottomNav.tsx` (Today, Tasks, History, Profile)
-- [ ] Setup toast/notification global (Sonner)
+- [x] All Done
 
 #### Phase 2 — Today Page
 

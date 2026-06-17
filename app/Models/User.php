@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasPublicId;
+use App\Models\DailyQuest\Task;
+use App\Models\DailyQuest\TaskCategory;
+use App\Models\DailyQuest\TaskInstance;
 use App\Models\Post\Post;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -13,13 +16,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'avatar', 'google_id', 'google_avatar', 'email_verified_at'])]
+#[Fillable([
+    'name',
+    'email',
+    'password',
+    'avatar',
+    'google_id',
+    'google_avatar',
+    'email_verified_at',
+    'timezone',
+    'total_points',
+    'current_streak',
+    'longest_streak',
+    'last_active_date',
+])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
@@ -42,6 +59,10 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'total_points' => 'integer',
+            'current_streak' => 'integer',
+            'longest_streak' => 'integer',
+            'last_active_date' => 'date',
         ];
     }
 
@@ -81,6 +102,60 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function mobileAuthTokens(): HasMany
     {
         return $this->hasMany(MobileAuthToken::class);
+    }
+
+    /**
+     * @return HasMany<TaskCategory, $this>
+     */
+    public function categories(): HasMany
+    {
+        return $this->hasMany(TaskCategory::class);
+    }
+
+    /**
+     * Backward-compatible alias for the daily quest category relation.
+     *
+     * @return HasMany<TaskCategory, $this>
+     */
+    public function taskCategories(): HasMany
+    {
+        return $this->categories();
+    }
+
+    /**
+     * @return HasMany<Task, $this>
+     */
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(Task::class);
+    }
+
+    /**
+     * @return HasMany<TaskInstance, $this>
+     */
+    public function taskInstances(): HasMany
+    {
+        return $this->hasMany(TaskInstance::class);
+    }
+
+    public function hasCompletedAllTasksOnDate(Carbon|string $date): bool
+    {
+        $targetDate = $date instanceof Carbon ? $date->toDateString() : $date;
+
+        $stats = $this->taskInstances()
+            ->whereDate('scheduled_date', $targetDate)
+            ->selectRaw('COUNT(*) as total_tasks')
+            ->selectRaw('COUNT(completed_at) as completed_tasks')
+            ->first();
+
+        if (! $stats) {
+            return false;
+        }
+
+        $totalTasks = (int) data_get($stats, 'total_tasks', 0);
+        $completedTasks = (int) data_get($stats, 'completed_tasks', 0);
+
+        return $totalTasks > 0 && $totalTasks === $completedTasks;
     }
 
     /**
