@@ -21,6 +21,7 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import type { DailyQuestTask } from '@/features/daily-quest/types';
+import { dailyQuestId } from '@/features/daily-quest/utils';
 
 type TaskActionsDrawerProps = {
     open: boolean;
@@ -41,6 +42,7 @@ export default function TaskActionsDrawer({
         return null;
     }
 
+    const taskId = dailyQuestId(task);
     const closeDrawer = () => onOpenChange(false);
 
     return (
@@ -61,7 +63,7 @@ export default function TaskActionsDrawer({
                             className="justify-start rounded-2xl"
                             onClick={() => {
                                 closeDrawer();
-                                router.visit(`/tasks/${task.id}/edit`);
+                                router.visit(`/tasks/${taskId}/edit`);
                             }}
                         >
                             <Pencil className="size-4" />
@@ -76,7 +78,7 @@ export default function TaskActionsDrawer({
                                 onClick={() => {
                                     closeDrawer();
                                     router.patch(
-                                        `/tasks/${task.id}/pause`,
+                                        `/tasks/${taskId}/pause`,
                                         { redirect_to: redirectTo },
                                         { preserveScroll: true },
                                     );
@@ -98,7 +100,7 @@ export default function TaskActionsDrawer({
                             onClick={() => {
                                 closeDrawer();
                                 router.post(
-                                    `/tasks/${task.id}/duplicate`,
+                                    `/tasks/${taskId}/duplicate`,
                                     { redirect_to: redirectTo },
                                     { preserveScroll: true },
                                 );
@@ -153,7 +155,7 @@ export default function TaskActionsDrawer({
                             onClick={() => {
                                 setConfirmDeleteOpen(false);
                                 closeDrawer();
-                                router.delete(`/tasks/${task.id}`, {
+                                router.delete(`/tasks/${taskId}`, {
                                     data: { redirect_to: redirectTo },
                                     preserveScroll: true,
                                 });

@@ -12,7 +12,6 @@ use App\Models\DailyQuest\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -170,13 +169,7 @@ class TaskController extends Controller
         $task = $request->user()
             ->tasks()
             ->withTrashed()
-            ->where(function (Builder $query) use ($identifier): void {
-                $query->whereKey($identifier);
-
-                if (Schema::hasColumn('tasks', 'public_id')) {
-                    $query->orWhere('public_id', $identifier);
-                }
-            })
+            ->whereKey($identifier)
             ->first();
 
         abort_unless($task instanceof Task, 404);

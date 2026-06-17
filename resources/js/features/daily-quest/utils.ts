@@ -20,6 +20,12 @@ import type {
     TaskStatusTab,
 } from '@/features/daily-quest/types';
 
+export function dailyQuestId(
+    item: { id?: string | null } | null | undefined,
+): string {
+    return item?.id ?? '';
+}
+
 export const recurrenceDayOptions = [
     { value: 'Mon', shortLabel: 'S', label: 'Senin' },
     { value: 'Tue', shortLabel: 'S', label: 'Selasa' },
@@ -68,7 +74,7 @@ export const taskEmojiGroups = [
 ] as const;
 
 export function toDateLabel(date: string | null): string {
-    if (! date) {
+    if (!date) {
         return '-';
     }
 
@@ -96,12 +102,15 @@ export function buildTaskRecurrenceSummary(values: {
         case 'x_days': {
             const startDate = values.recurrence_starts_at || todayDate();
 
-            if (! values.x_days_span) {
+            if (!values.x_days_span) {
                 return `Mulai ${startDate}`;
             }
 
             const endDate = format(
-                addDays(parseISO(startDate), Math.max(Number(values.x_days_span) - 1, 0)),
+                addDays(
+                    parseISO(startDate),
+                    Math.max(Number(values.x_days_span) - 1, 0),
+                ),
                 'yyyy-MM-dd',
             );
 
@@ -120,7 +129,10 @@ export function todayDate(): string {
     return format(new Date(), 'yyyy-MM-dd');
 }
 
-export function buildTaskRedirectPath(status: TaskStatusTab, search = ''): string {
+export function buildTaskRedirectPath(
+    status: TaskStatusTab,
+    search = '',
+): string {
     const params = new URLSearchParams({ status });
 
     if (search.trim() !== '') {
@@ -139,7 +151,7 @@ export function inferTaskStatus(task: DailyQuestTask): TaskStatusTab {
 }
 
 export function categoryLabel(category: TaskCategory | null): string {
-    if (! category) {
+    if (!category) {
         return 'Tanpa kategori';
     }
 
@@ -163,7 +175,7 @@ export function formatHistoryMonthLabel(month: string): string {
 }
 
 export function completionTone(summary: HistoryDaySummary | null): string {
-    if (! summary || summary.total_tasks === 0) {
+    if (!summary || summary.total_tasks === 0) {
         return 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400';
     }
 
@@ -181,7 +193,9 @@ export function completionTone(summary: HistoryDaySummary | null): string {
 export function historyDaySummaries(days: HistoryDay[]): HistoryDaySummary[] {
     return days
         .map((day) => day.summary)
-        .filter((summary): summary is HistoryDaySummary => summary.date !== null);
+        .filter(
+            (summary): summary is HistoryDaySummary => summary.date !== null,
+        );
 }
 
 export function historyMonthOptions(days: HistoryDay[]): string[] {

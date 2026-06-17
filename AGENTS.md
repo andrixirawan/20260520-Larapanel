@@ -115,6 +115,12 @@ require __DIR__ . '/api/pos.php';
 require __DIR__ . '/api/mobile.php';
 ```
 
+Do not rely on implicit route-model binding for mutable feature routes. For routes
+that update, delete, pause, complete, duplicate, or otherwise mutate data, accept
+the route parameter as a string in the controller and explicitly resolve the
+record through the authenticated user's scoped relationship or an explicit query.
+Return 404 when the scoped query cannot find the record.
+
 ## Database Structure
 
 Group database files by feature.

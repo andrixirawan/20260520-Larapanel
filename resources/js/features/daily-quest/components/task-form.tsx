@@ -23,6 +23,7 @@ import type {
 import {
     buildTaskRecurrenceSummary,
     categoryLabel,
+    dailyQuestId,
     todayDate,
 } from '@/features/daily-quest/utils';
 
@@ -67,7 +68,7 @@ function toInitialData(task?: DailyQuestTask): TaskFormData {
     const endsAt = task?.recurrence_ends_at ?? '';
 
     return {
-        category_id: task?.category?.id ?? '',
+        category_id: dailyQuestId(task?.category),
         name: task?.name ?? '',
         description: task?.description ?? '',
         icon: task?.icon ?? '',
@@ -104,8 +105,9 @@ export default function TaskForm({
     const [emojiOpen, setEmojiOpen] = useState(false);
     const form = useForm<TaskFormData>(toInitialData(task));
     const selectedCategory =
-        categories.find((category) => category.id === form.data.category_id) ??
-        null;
+        categories.find(
+            (category) => dailyQuestId(category) === form.data.category_id,
+        ) ?? null;
     const handleRecurrenceChange = <K extends keyof RecurrenceValues>(
         key: K,
         value: RecurrenceValues[K],
@@ -172,7 +174,7 @@ export default function TaskForm({
             return;
         }
 
-        form.patch(`/tasks/${task?.id}`, { preserveScroll: true });
+        form.patch(`/tasks/${dailyQuestId(task)}`, { preserveScroll: true });
     };
 
     return (

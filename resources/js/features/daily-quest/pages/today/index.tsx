@@ -24,10 +24,10 @@ import {
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Progress } from '@/components/ui/progress';
-import QuickAddTaskDrawer from '@/features/daily-quest/components/quick-add-task-drawer';
 import TaskInstanceOptionsDrawer from '@/features/daily-quest/components/task-instance-options-drawer';
 import TaskItem from '@/features/daily-quest/components/task-item';
 import type { TaskInstance, TodayStats } from '@/features/daily-quest/types';
+import { dailyQuestId } from '@/features/daily-quest/utils';
 
 type TodayPageProps = {
     date: string;
@@ -50,7 +50,6 @@ export default function DailyQuestTodayIndex({
     stats,
     streak,
 }: TodayPageProps) {
-    const [quickAddOpen, setQuickAddOpen] = useState(false);
     const [optionsOpen, setOptionsOpen] = useState(false);
     const [completedOpen, setCompletedOpen] = useState(true);
     const [selectedInstance, setSelectedInstance] =
@@ -73,23 +72,25 @@ export default function DailyQuestTodayIndex({
         currentStats.completed_tasks === currentStats.total_tasks;
 
     const toggleInstance = (instance: TaskInstance) => {
-        if (pendingIds.includes(instance.id)) {
+        const instanceId = dailyQuestId(instance);
+
+        if (!instanceId || pendingIds.includes(instanceId)) {
             return;
         }
 
         const willComplete = instance.completed_at === null;
 
-        setPendingIds((current) => [...current, instance.id]);
+        setPendingIds((current) => [...current, instanceId]);
 
         router.patch(
-            `/instances/${instance.id}/${willComplete ? 'complete' : 'uncomplete'}`,
+            `/instances/${instanceId}/${willComplete ? 'complete' : 'uncomplete'}`,
             {},
             {
                 preserveScroll: true,
                 preserveState: false,
                 onFinish: () => {
                     setPendingIds((current) =>
-                        current.filter((id) => id !== instance.id),
+                        current.filter((id) => id !== instanceId),
                     );
                 },
             },
@@ -202,7 +203,7 @@ export default function DailyQuestTodayIndex({
                             <div className="space-y-2">
                                 <Heading
                                     title="Belum ada task untuk hari ini"
-                                    description="Mulai dari satu task kecil. Quick add di bawah akan langsung membuat task baru dan memasukkannya ke daftar hari ini."
+                                    description="Mulai dari satu task kecil melalui form task lengkap."
                                     variant="small"
                                 />
                             </div>
@@ -210,7 +211,7 @@ export default function DailyQuestTodayIndex({
                                 type="button"
                                 size="lg"
                                 className="rounded-full"
-                                onClick={() => setQuickAddOpen(true)}
+                                onClick={() => router.visit('/tasks/create')}
                             >
                                 <Plus className="size-4" />
                                 Tambah task pertama
@@ -237,9 +238,11 @@ export default function DailyQuestTodayIndex({
                             <div className="space-y-3">
                                 {pendingInstances.map((instance) => (
                                     <TaskItem
-                                        key={instance.id}
+                                        key={dailyQuestId(instance)}
                                         instance={instance}
-                                        busy={pendingIds.includes(instance.id)}
+                                        busy={pendingIds.includes(
+                                            dailyQuestId(instance),
+                                        )}
                                         onToggle={toggleInstance}
                                         onOpenOptions={(nextInstance) => {
                                             setSelectedInstance(nextInstance);
@@ -284,9 +287,11 @@ export default function DailyQuestTodayIndex({
                             <CollapsibleContent className="space-y-3 pt-4">
                                 {completedInstances.map((instance) => (
                                     <TaskItem
-                                        key={instance.id}
+                                        key={dailyQuestId(instance)}
                                         instance={instance}
-                                        busy={pendingIds.includes(instance.id)}
+                                        busy={pendingIds.includes(
+                                            dailyQuestId(instance),
+                                        )}
                                         onToggle={toggleInstance}
                                         onOpenOptions={(nextInstance) => {
                                             setSelectedInstance(nextInstance);
@@ -305,18 +310,12 @@ export default function DailyQuestTodayIndex({
                     type="button"
                     size="lg"
                     className="pointer-events-auto h-14 rounded-full px-6 shadow-xl"
-                    onClick={() => setQuickAddOpen(true)}
+                    onClick={() => router.visit('/tasks/create')}
                 >
                     <Plus className="size-5" />
                     Tambah task
                 </Button>
             </div>
-
-            <QuickAddTaskDrawer
-                date={date}
-                open={quickAddOpen}
-                onOpenChange={setQuickAddOpen}
-            />
 
             <TaskInstanceOptionsDrawer
                 instance={selectedInstance}

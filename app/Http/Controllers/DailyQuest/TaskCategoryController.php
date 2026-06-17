@@ -6,10 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DailyQuest\StoreTaskCategoryRequest;
 use App\Http\Resources\DailyQuest\TaskCategoryResource;
 use App\Models\DailyQuest\TaskCategory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -63,13 +61,7 @@ class TaskCategoryController extends Controller
     {
         $category = $request->user()
             ->categories()
-            ->where(function (Builder $query) use ($identifier): void {
-                $query->whereKey($identifier);
-
-                if (Schema::hasColumn('task_categories', 'public_id')) {
-                    $query->orWhere('public_id', $identifier);
-                }
-            })
+            ->whereKey($identifier)
             ->first();
 
         abort_unless($category instanceof TaskCategory, 404);

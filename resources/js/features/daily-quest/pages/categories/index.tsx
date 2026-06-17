@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import ColorPicker from '@/features/daily-quest/components/color-picker';
 import EmojiPicker from '@/features/daily-quest/components/emoji-picker';
 import type { TaskCategory } from '@/features/daily-quest/types';
+import { dailyQuestId } from '@/features/daily-quest/utils';
 
 type CategoriesPageProps = {
     categories: TaskCategory[];
@@ -75,7 +76,7 @@ export default function DailyQuestCategoriesIndex({
 
     const submit = () => {
         if (editingCategory) {
-            form.patch(`/categories/${editingCategory.id}`, {
+            form.patch(`/categories/${dailyQuestId(editingCategory)}`, {
                 preserveScroll: true,
                 onSuccess: () => setDialogOpen(false),
             });
@@ -126,7 +127,7 @@ export default function DailyQuestCategoriesIndex({
                     <div className="grid gap-4 md:grid-cols-2">
                         {categories.map((category) => (
                             <Card
-                                key={category.id}
+                                key={dailyQuestId(category)}
                                 className="rounded-[2rem] border bg-card/90 py-0 shadow-sm"
                             >
                                 <CardContent className="space-y-4 px-5 py-5">
@@ -315,7 +316,7 @@ export default function DailyQuestCategoriesIndex({
                                 }
 
                                 deleteForm.delete(
-                                    `/categories/${deleteTarget.id}`,
+                                    `/categories/${dailyQuestId(deleteTarget)}`,
                                     {
                                         preserveScroll: true,
                                         onSuccess: () => setDeleteTarget(null),

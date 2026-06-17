@@ -16,7 +16,7 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import type { TaskCategory } from '@/features/daily-quest/types';
-import { categoryLabel } from '@/features/daily-quest/utils';
+import { categoryLabel, dailyQuestId } from '@/features/daily-quest/utils';
 import { cn } from '@/lib/utils';
 
 type CategoryPickerProps = {
@@ -32,7 +32,7 @@ export default function CategoryPicker({
 }: CategoryPickerProps) {
     const [open, setOpen] = useState(false);
     const selectedCategory =
-        categories.find((category) => category.id === value) ?? null;
+        categories.find((category) => dailyQuestId(category) === value) ?? null;
 
     const sortedCategories = useMemo(
         () =>
@@ -99,17 +99,17 @@ export default function CategoryPicker({
 
                                 {sortedCategories.map((category) => (
                                     <CommandItem
-                                        key={category.id}
+                                        key={dailyQuestId(category)}
                                         value={`${category.name} ${category.icon ?? ''}`}
                                         onSelect={() => {
-                                            onChange(category.id);
+                                            onChange(dailyQuestId(category));
                                             setOpen(false);
                                         }}
                                     >
                                         <Check
                                             className={cn(
                                                 'size-4',
-                                                value === category.id
+                                                value === dailyQuestId(category)
                                                     ? 'opacity-100'
                                                     : 'opacity-0',
                                             )}

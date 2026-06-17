@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { DailyQuestTask } from '@/features/daily-quest/types';
-import { inferTaskStatus } from '@/features/daily-quest/utils';
+import { dailyQuestId, inferTaskStatus } from '@/features/daily-quest/utils';
 
 type TaskCardProps = {
     task: DailyQuestTask;
@@ -15,6 +15,7 @@ type TaskCardProps = {
 export default function TaskCard({ task, onOpenActions }: TaskCardProps) {
     const timerRef = useRef<number | null>(null);
     const status = inferTaskStatus(task);
+    const taskId = dailyQuestId(task);
 
     const clearTimer = () => {
         if (timerRef.current !== null) {
@@ -45,11 +46,11 @@ export default function TaskCard({ task, onOpenActions }: TaskCardProps) {
                     role="button"
                     tabIndex={0}
                     className="flex w-full cursor-pointer items-start gap-4 px-5 py-5 text-left"
-                    onClick={() => router.visit(`/tasks/${task.id}/edit`)}
+                    onClick={() => router.visit(`/tasks/${taskId}/edit`)}
                     onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
-                            router.visit(`/tasks/${task.id}/edit`);
+                            router.visit(`/tasks/${taskId}/edit`);
                         }
                     }}
                 >

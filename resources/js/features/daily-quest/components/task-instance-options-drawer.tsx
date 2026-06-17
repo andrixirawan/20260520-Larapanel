@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/drawer';
 import { Textarea } from '@/components/ui/textarea';
 import type { TaskInstance } from '@/features/daily-quest/types';
+import { dailyQuestId } from '@/features/daily-quest/utils';
 
 type TaskInstanceOptionsDrawerProps = {
     instance: TaskInstance | null;
@@ -103,7 +104,7 @@ export default function TaskInstanceOptionsDrawer({
 
                 <DrawerFooter className="border-t bg-background/80 backdrop-blur-sm">
                     <Button asChild className="w-full rounded-full">
-                        <Link href={`/tasks/${instance.task?.id}`}>
+                        <Link href={`/tasks/${dailyQuestId(instance.task)}`}>
                             <FileText className="size-4" />
                             Lihat detail task
                         </Link>

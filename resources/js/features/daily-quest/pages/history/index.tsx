@@ -37,6 +37,7 @@ import type {
     TaskInstance,
 } from '@/features/daily-quest/types';
 import {
+    dailyQuestId,
     formatHistoryDayLabel,
     historyDaySummaries,
     historyMonthOptions,
@@ -152,7 +153,10 @@ function HistoryFiltersPopover({
                             <SelectContent>
                                 <SelectItem value="all">Semua task</SelectItem>
                                 {tasks.map((task) => (
-                                    <SelectItem key={task.id} value={task.id}>
+                                    <SelectItem
+                                        key={dailyQuestId(task)}
+                                        value={dailyQuestId(task)}
+                                    >
                                         {task.icon ? `${task.icon} ` : ''}
                                         {task.name}
                                     </SelectItem>
@@ -181,8 +185,8 @@ function HistoryFiltersPopover({
                                 </SelectItem>
                                 {categories.map((category) => (
                                     <SelectItem
-                                        key={category.id}
-                                        value={category.id}
+                                        key={dailyQuestId(category)}
+                                        value={dailyQuestId(category)}
                                     >
                                         {category.icon
                                             ? `${category.icon} `
@@ -536,9 +540,9 @@ export default function DailyQuestHistoryIndex({
                                                     {day.instances.map(
                                                         (instance) => (
                                                             <HistoryInstanceRow
-                                                                key={
-                                                                    instance.id
-                                                                }
+                                                                key={dailyQuestId(
+                                                                    instance,
+                                                                )}
                                                                 instance={
                                                                     instance
                                                                 }

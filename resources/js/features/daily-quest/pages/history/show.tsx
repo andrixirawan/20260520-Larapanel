@@ -9,7 +9,10 @@ import type {
     HistoryDaySummary,
     TaskInstance,
 } from '@/features/daily-quest/types';
-import { formatHistoryDayLabel } from '@/features/daily-quest/utils';
+import {
+    dailyQuestId,
+    formatHistoryDayLabel,
+} from '@/features/daily-quest/utils';
 
 type HistoryShowProps = {
     date: string;
@@ -148,7 +151,7 @@ export default function DailyQuestHistoryShow({
                 <section className="space-y-3">
                     {instances.map((instance) => (
                         <DetailInstanceRow
-                            key={instance.id}
+                            key={dailyQuestId(instance)}
                             instance={instance}
                         />
                     ))}

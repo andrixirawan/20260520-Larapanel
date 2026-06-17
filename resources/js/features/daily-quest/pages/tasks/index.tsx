@@ -13,6 +13,7 @@ import type {
 } from '@/features/daily-quest/types';
 import {
     buildTaskRedirectPath,
+    dailyQuestId,
     taskStatusMeta,
 } from '@/features/daily-quest/utils';
 
@@ -128,7 +129,7 @@ export default function DailyQuestTasksIndex({
                     <div className="space-y-4">
                         {tasks.map((task) => (
                             <TaskCard
-                                key={task.id}
+                                key={dailyQuestId(task)}
                                 task={task}
                                 onOpenActions={(nextTask) => {
                                     setSelectedTask(nextTask);
