@@ -355,13 +355,13 @@ App
 
 #### Phase 5 — Dashboard & Profile
 
-- [ ] Halaman `Dashboard/Index.tsx` (stats card, XP bar, chart mingguan)
-- [ ] Komponen `StatsCard.tsx` (streak, total poin, completion rate)
-- [ ] Komponen `XPProgressBar.tsx` (level + progress)
-- [ ] Chart mingguan (bar chart dengan recharts)
-- [ ] Halaman `Profile/Index.tsx` (avatar, stats, menu pengaturan)
-- [ ] Bottom sheet edit display name
-- [ ] Halaman `Categories/Index.tsx` (CRUD kategori)
+- [x] Halaman `Dashboard/Index.tsx` (stats card, XP bar, chart mingguan)
+- [x] Komponen `StatsCard.tsx` (streak, total poin, completion rate)
+- [x] Komponen `XPProgressBar.tsx` (level + progress)
+- [x] Chart mingguan (bar chart dengan recharts)
+- [x] Halaman `Profile/Index.tsx` (avatar, stats, menu pengaturan)
+- [x] Bottom sheet edit display name
+- [x] Halaman `Categories/Index.tsx` (CRUD kategori)
 
 ---
 
@@ -459,10 +459,10 @@ App
 
 #### Kategori
 
-- [ ] User bisa membuat kategori task
-- [ ] User bisa memberi warna dan ikon ke kategori
-- [ ] User bisa mengelompokkan task ke dalam kategori
-- [ ] User bisa mengedit dan menghapus kategori
+- [x] User bisa membuat kategori task
+- [x] User bisa memberi warna dan ikon ke kategori
+- [x] User bisa mengelompokkan task ke dalam kategori
+- [x] User bisa mengedit dan menghapus kategori
 
 #### Today / Task Instance
 
@@ -489,20 +489,20 @@ App
 - [ ] Poin direvoke jika task di-uncomplete
 - [ ] User memiliki streak harian (berapa hari berturut-turut ada task yang selesai)
 - [ ] Streak reset jika hari itu tidak ada task yang diselesaikan (dengan toleransi konfigurasi)
-- [ ] User memiliki total poin kumulatif
-- [ ] User melihat XP progress menuju level berikutnya
+- [x] User memiliki total poin kumulatif
+- [x] User melihat XP progress menuju level berikutnya
 - [ ] Ada feedback visual saat semua task hari ini selesai
 
 #### Stats
 
-- [ ] User melihat streak saat ini dan streak terpanjang
-- [ ] User melihat total poin sepanjang waktu
-- [ ] User melihat completion rate (minggu ini)
-- [ ] User melihat grafik activity mingguan
+- [x] User melihat streak saat ini dan streak terpanjang
+- [x] User melihat total poin sepanjang waktu
+- [x] User melihat completion rate (minggu ini)
+- [x] User melihat grafik activity mingguan
 
 #### Profile & Settings
 
-- [ ] User bisa mengubah nama tampilan
+- [x] User bisa mengubah nama tampilan
 - [ ] User bisa mengatur timezone
 - [ ] User bisa memilih tema (light/dark)
 - [ ] User bisa memilih warna aksen aplikasi

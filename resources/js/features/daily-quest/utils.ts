@@ -10,9 +10,11 @@ import {
     startOfWeek,
 } from 'date-fns';
 import type {
+    DashboardStats,
     DailyQuestTask,
     HistoryDay,
     HistoryDaySummary,
+    ProfileStats,
     RecurrenceType,
     TaskCategory,
     TaskStatusTab,
@@ -205,4 +207,51 @@ export function buildHeatmapMonthDays(month: string): Date[] {
 
 export function isWithinVisibleMonth(date: Date, month: string): boolean {
     return isSameMonth(date, parseISO(`${month}-01`));
+}
+
+export function calculateXp(totalPoints: number): {
+    level: number;
+    currentXp: number;
+    nextLevelXp: number;
+    progress: number;
+} {
+    const pointsPerLevel = 100;
+    const safePoints = Math.max(totalPoints, 0);
+    const level = Math.floor(safePoints / pointsPerLevel) + 1;
+    const currentXp = safePoints % pointsPerLevel;
+    const nextLevelXp = pointsPerLevel;
+
+    return {
+        level,
+        currentXp,
+        nextLevelXp,
+        progress: Math.round((currentXp / nextLevelXp) * 100),
+    };
+}
+
+export function formatCompactDate(date: string): string {
+    return new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'short',
+    }).format(new Date(`${date}T00:00:00`));
+}
+
+export function profileHighlights(stats: ProfileStats): Array<{
+    label: string;
+    value: number;
+}> {
+    return [
+        { label: 'Streak aktif', value: stats.streak.current },
+        { label: 'Streak terpanjang', value: stats.streak.longest },
+        { label: 'Task selesai', value: stats.tasks.completed },
+        { label: 'Kategori', value: stats.categories.total },
+    ];
+}
+
+export function weeklyChartPeak(stats: DashboardStats): number {
+    return Math.max(
+        ...stats.weekly_chart.map((item) => item.points_earned),
+        ...stats.weekly_chart.map((item) => item.completed_tasks),
+        1,
+    );
 }

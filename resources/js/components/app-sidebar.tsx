@@ -74,6 +74,10 @@ export function AppSidebar() {
                     title: 'Categories',
                     href: '/categories',
                 },
+                {
+                    title: 'Profile',
+                    href: '/daily-quest/profile',
+                },
             ],
         },
         {

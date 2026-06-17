@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DailyQuest\DashboardController;
 use App\Http\Controllers\DailyQuest\HistoryController;
+use App\Http\Controllers\DailyQuest\ProfileController;
 use App\Http\Controllers\DailyQuest\TaskCategoryController;
 use App\Http\Controllers\DailyQuest\TaskController;
 use App\Http\Controllers\DailyQuest\TaskInstanceController;
@@ -21,6 +22,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('history', [HistoryController::class, 'index'])->name('history');
     Route::get('history/{date}', [HistoryController::class, 'show'])->name('history.show');
+
+    Route::get('daily-quest/profile', [ProfileController::class, 'index'])->name('daily-quest.profile');
+    Route::patch('daily-quest/profile/display-name', [ProfileController::class, 'updateDisplayName'])->name('daily-quest.profile.display-name');
 
     Route::resource('categories', TaskCategoryController::class)->only(['index', 'store', 'update', 'destroy']);
 });

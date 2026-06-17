@@ -72,3 +72,44 @@ export type HistoryFilters = {
     from?: string;
     to?: string;
 };
+
+export type DashboardStats = {
+    streak: {
+        current: number;
+        longest: number;
+    };
+    points: {
+        total: number;
+        today?: number;
+    };
+    today?: {
+        date: string;
+        total_tasks: number;
+        completed_tasks: number;
+    };
+    weekly_completion_rate: number;
+    weekly_chart: Array<{
+        date: string;
+        total_tasks: number;
+        completed_tasks: number;
+        points_earned: number;
+    }>;
+};
+
+export type ProfileStats = {
+    streak: {
+        current: number;
+        longest: number;
+    };
+    points: {
+        total: number;
+    };
+    tasks: {
+        completed: number;
+        active: number;
+    };
+    categories: {
+        total: number;
+    };
+    weekly_completion_rate: number;
+};

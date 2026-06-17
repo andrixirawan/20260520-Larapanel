@@ -271,3 +271,41 @@ test('history and dashboard pages expose daily quest summaries', function () {
             ->where('stats.points.total', 35)
         );
 });
+
+test('daily quest profile page renders and display name can be updated', function () {
+    Carbon::setTestNow('2026-06-17 08:00:00');
+
+    $user = User::factory()->create([
+        'name' => 'Old Name',
+        'timezone' => 'Asia/Jakarta',
+        'total_points' => 80,
+        'current_streak' => 3,
+        'longest_streak' => 5,
+    ]);
+    $task = makeDailyQuestTask($user, ['name' => 'Walk']);
+
+    TaskInstance::query()->create([
+        'task_id' => $task->id,
+        'user_id' => $user->id,
+        'scheduled_date' => '2026-06-17',
+        'completed_at' => '2026-06-17 06:30:00',
+        'points_awarded' => 10,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('daily-quest.profile'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('daily-quest/profile/index')
+            ->where('stats.streak.current', 3)
+            ->where('stats.points.total', 80)
+        );
+
+    $this->actingAs($user)
+        ->patch(route('daily-quest.profile.display-name'), [
+            'name' => 'New Name',
+        ])
+        ->assertRedirect(route('daily-quest.profile'));
+
+    expect($user->fresh()->name)->toBe('New Name');
+});
