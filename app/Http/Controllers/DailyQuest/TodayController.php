@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\DailyQuest;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DailyQuest\TaskInstanceResource;
 use App\Models\DailyQuest\TaskInstance;
 use App\Services\DailyQuest\TaskSchedulerService;
 use App\Support\DailyQuestPayload;
@@ -33,7 +34,7 @@ class TodayController extends Controller
 
         return Inertia::render('daily-quest/today/index', [
             'date' => $today->toDateString(),
-            'instances' => $instances->map(fn (TaskInstance $instance): array => DailyQuestPayload::taskInstance($instance)),
+            'instances' => TaskInstanceResource::collection($instances)->resolve(),
             'stats' => DailyQuestPayload::daySummary($instances),
             'streak' => $user->current_streak,
         ]);

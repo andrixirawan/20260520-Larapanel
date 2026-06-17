@@ -301,12 +301,12 @@ App
 
 #### Phase 4 — API Resources & Validation
 
-- [ ] `TaskResource` (public_id, name, icon, color, points, recurrence summary, category)
-- [ ] `TaskInstanceResource` (public_id, task, scheduled_date, completed_at, points_awarded)
-- [ ] `TaskCategoryResource`
-- [ ] Form Request: `StoreTaskRequest` (validasi recurrence kondisional)
-- [ ] Form Request: `UpdateTaskRequest`
-- [ ] Form Request: `StoreTaskCategoryRequest`
+- [x] `TaskResource` (public_id, name, icon, color, points, recurrence summary, category)
+- [x] `TaskInstanceResource` (public_id, task, scheduled_date, completed_at, points_awarded)
+- [x] `TaskCategoryResource`
+- [x] Form Request: `StoreTaskRequest` (validasi recurrence kondisional)
+- [x] Form Request: `UpdateTaskRequest`
+- [x] Form Request: `StoreTaskCategoryRequest`
 
 ---
 

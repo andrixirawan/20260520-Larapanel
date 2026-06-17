@@ -510,6 +510,18 @@ return Inertia::render('Today/Index', [
 ]);
 ```
 
+Current repo implementation serializes this payload through:
+
+- `app/Http/Resources/DailyQuest/TaskResource.php`
+- `app/Http/Resources/DailyQuest/TaskInstanceResource.php`
+- `app/Http/Resources/DailyQuest/TaskCategoryResource.php`
+
+Task and category mutations are validated through:
+
+- `app/Http/Requests/DailyQuest/StoreTaskRequest.php`
+- `app/Http/Requests/DailyQuest/UpdateTaskRequest.php`
+- `app/Http/Requests/DailyQuest/StoreTaskCategoryRequest.php`
+
 ```ts
 // types/task.ts
 export interface TaskInstance {

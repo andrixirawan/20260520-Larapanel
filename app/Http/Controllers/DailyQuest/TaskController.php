@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\DailyQuest;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DailyQuest\StoreTaskRequest;
+use App\Http\Requests\DailyQuest\UpdateTaskRequest;
+use App\Http\Resources\DailyQuest\TaskCategoryResource;
+use App\Http\Resources\DailyQuest\TaskInstanceResource;
+use App\Http\Resources\DailyQuest\TaskResource;
 use App\Models\DailyQuest\Task;
-use App\Models\DailyQuest\TaskCategory;
-use App\Support\DailyQuestPayload;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,38 +42,30 @@ class TaskController extends Controller
         }
 
         return Inertia::render('daily-quest/tasks/index', [
-            'tasks' => $taskQuery
-                ->get()
-                ->map(fn (Task $task): array => DailyQuestPayload::task($task)),
+            'tasks' => TaskResource::collection($taskQuery->get())->resolve(),
             'filters' => [
                 'status' => $status,
                 'search' => $search,
             ],
-            'categories' => $request->user()
-                ->categories()
-                ->orderBy('name')
-                ->get()
-                ->map(fn (TaskCategory $category): array => DailyQuestPayload::category($category)),
+            'categories' => TaskCategoryResource::collection(
+                $request->user()->categories()->orderBy('name')->get(),
+            )->resolve(),
         ]);
     }
 
     public function create(Request $request): Response
     {
         return Inertia::render('daily-quest/tasks/create', [
-            'categories' => $request->user()
-                ->categories()
-                ->orderBy('name')
-                ->get()
-                ->map(fn (TaskCategory $category): array => DailyQuestPayload::category($category)),
+            'categories' => TaskCategoryResource::collection(
+                $request->user()->categories()->orderBy('name')->get(),
+            )->resolve(),
             'recurrence_types' => $this->recurrenceTypes(),
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreTaskRequest $request): RedirectResponse
     {
-        $validated = $this->validateTask($request);
-
-        $request->user()->tasks()->create($validated);
+        $request->user()->tasks()->create($request->taskAttributes());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Task created.')]);
 
@@ -84,8 +79,8 @@ class TaskController extends Controller
         $task->load(['category', 'instances' => fn ($query) => $query->latest('scheduled_date')->limit(14)]);
 
         return Inertia::render('daily-quest/tasks/show', [
-            'task' => DailyQuestPayload::task($task),
-            'recent_instances' => $task->instances->map(fn ($instance): array => DailyQuestPayload::taskInstance($instance)),
+            'task' => TaskResource::make($task)->resolve(),
+            'recent_instances' => TaskInstanceResource::collection($task->instances)->resolve(),
         ]);
     }
 
@@ -95,21 +90,19 @@ class TaskController extends Controller
         $task->load('category');
 
         return Inertia::render('daily-quest/tasks/edit', [
-            'task' => DailyQuestPayload::task($task),
-            'categories' => $request->user()
-                ->categories()
-                ->orderBy('name')
-                ->get()
-                ->map(fn (TaskCategory $category): array => DailyQuestPayload::category($category)),
+            'task' => TaskResource::make($task)->resolve(),
+            'categories' => TaskCategoryResource::collection(
+                $request->user()->categories()->orderBy('name')->get(),
+            )->resolve(),
             'recurrence_types' => $this->recurrenceTypes(),
         ]);
     }
 
-    public function update(Request $request, Task $task): RedirectResponse
+    public function update(UpdateTaskRequest $request, Task $task): RedirectResponse
     {
         $this->ensureOwnedTask($request, $task);
 
-        $task->update($this->validateTask($request, $task));
+        $task->update($request->taskAttributes());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Task updated.')]);
 
@@ -130,43 +123,6 @@ class TaskController extends Controller
     private function ensureOwnedTask(Request $request, Task $task): void
     {
         abort_unless($task->user_id === $request->user()->id, 404);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function validateTask(Request $request, ?Task $task = null): array
-    {
-        $validated = $request->validate([
-            'category_public_id' => ['nullable', 'string'],
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'icon' => ['nullable', 'string', 'max:64'],
-            'color' => ['nullable', 'string', 'max:24'],
-            'points' => ['required', 'integer', 'min:0', 'max:100000'],
-            'recurrence_type' => ['required', 'string', 'in:daily,specific_days,one_time,x_days,date_range'],
-            'recurrence_days' => ['nullable', 'array'],
-            'recurrence_days.*' => ['string', 'in:Mon,Tue,Wed,Thu,Fri,Sat,Sun'],
-            'recurrence_starts_at' => ['nullable', 'date'],
-            'recurrence_ends_at' => ['nullable', 'date', 'after_or_equal:recurrence_starts_at'],
-            'is_active' => ['sometimes', 'boolean'],
-        ]);
-
-        $category = null;
-
-        if ($request->filled('category_public_id')) {
-            $category = $request->user()
-                ->categories()
-                ->where('public_id', $request->string('category_public_id')->toString())
-                ->firstOrFail();
-        }
-
-        $validated['category_id'] = $category?->id;
-        $validated['is_active'] = $validated['is_active'] ?? $task?->is_active ?? true;
-
-        unset($validated['category_public_id']);
-
-        return $validated;
     }
 
     /**

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\DailyQuest;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DailyQuest\TaskCategoryResource;
+use App\Http\Resources\DailyQuest\TaskInstanceResource;
+use App\Http\Resources\DailyQuest\TaskResource;
 use App\Models\DailyQuest\TaskInstance;
 use App\Support\DailyQuestPayload;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,7 +34,7 @@ class HistoryController extends Controller
 
                 return [
                     'summary' => DailyQuestPayload::daySummary($collection),
-                    'instances' => $collection->map(fn (TaskInstance $instance): array => DailyQuestPayload::taskInstance($instance))->values()->all(),
+                    'instances' => TaskInstanceResource::collection($collection)->resolve(),
                 ];
             })
             ->values()
@@ -45,8 +48,8 @@ class HistoryController extends Controller
                 'from' => $request->string('from')->toString(),
                 'to' => $request->string('to')->toString(),
             ],
-            'tasks' => $user->tasks()->with('category')->orderBy('name')->get()->map(fn ($task): array => DailyQuestPayload::task($task)),
-            'categories' => $user->categories()->orderBy('name')->get()->map(fn ($category): array => DailyQuestPayload::category($category)),
+            'tasks' => TaskResource::collection($user->tasks()->with('category')->orderBy('name')->get())->resolve(),
+            'categories' => TaskCategoryResource::collection($user->categories()->orderBy('name')->get())->resolve(),
         ]);
     }
 
@@ -65,7 +68,7 @@ class HistoryController extends Controller
         return Inertia::render('daily-quest/history/show', [
             'date' => $parsedDate,
             'summary' => DailyQuestPayload::daySummary($instances),
-            'instances' => $instances->map(fn (TaskInstance $instance): array => DailyQuestPayload::taskInstance($instance)),
+            'instances' => TaskInstanceResource::collection($instances)->resolve(),
         ]);
     }
 

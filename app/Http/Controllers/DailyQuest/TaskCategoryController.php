@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\DailyQuest;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DailyQuest\StoreTaskCategoryRequest;
+use App\Http\Resources\DailyQuest\TaskCategoryResource;
 use App\Models\DailyQuest\TaskCategory;
-use App\Support\DailyQuestPayload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,40 +19,27 @@ class TaskCategoryController extends Controller
             ->categories()
             ->withCount('tasks')
             ->orderBy('name')
-            ->get()
-            ->map(fn (TaskCategory $category): array => DailyQuestPayload::category($category));
+            ->get();
 
         return Inertia::render('daily-quest/categories/index', [
-            'categories' => $categories,
+            'categories' => TaskCategoryResource::collection($categories)->resolve(),
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreTaskCategoryRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'color' => ['nullable', 'string', 'max:24'],
-            'icon' => ['nullable', 'string', 'max:64'],
-        ]);
-
-        $request->user()->categories()->create($validated);
+        $request->user()->categories()->create($request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Category created.')]);
 
         return back();
     }
 
-    public function update(Request $request, TaskCategory $category): RedirectResponse
+    public function update(StoreTaskCategoryRequest $request, TaskCategory $category): RedirectResponse
     {
         abort_unless($category->user_id === $request->user()->id, 404);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'color' => ['nullable', 'string', 'max:24'],
-            'icon' => ['nullable', 'string', 'max:64'],
-        ]);
-
-        $category->update($validated);
+        $category->update($request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Category updated.')]);
 
