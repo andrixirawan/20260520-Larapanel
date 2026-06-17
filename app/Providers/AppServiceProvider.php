@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Listeners\GenerateDailyQuestCatchUpOnLogin;
 use App\Listeners\SendLoginNotification;
 use App\Listeners\SendLogoutNotification;
 use App\Models\Post\Post;
@@ -10,10 +11,10 @@ use App\Support\AccessControl;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -57,6 +58,7 @@ class AppServiceProvider extends ServiceProvider
     protected function configureAuthActivityNotifications(): void
     {
         Event::listen(Login::class, SendLoginNotification::class);
+        Event::listen(Login::class, GenerateDailyQuestCatchUpOnLogin::class);
         Event::listen(Logout::class, SendLogoutNotification::class);
     }
 

@@ -156,7 +156,7 @@ public function user(): BelongsTo        { return $this->belongsTo(User::class);
 ## 5. Logic: Generate Task Instances
 
 ```php
-// app/Services/TaskSchedulerService.php
+// app/Services/DailyQuest/TaskSchedulerService.php
 
 public function generateForDate(User $user, Carbon $date): void
 {
@@ -190,12 +190,9 @@ private function shouldRunOn(Task $task, Carbon $date): bool
 
 ```php
 // app/Console/Commands/GenerateDailyTasks.php
-// Scheduled: setiap hari pukul 00:05 UTC (atau per-user berdasarkan timezone)
+// Scheduled: setiap hari pukul 00:05 server time, lalu generate berdasarkan timezone user
 
-protected function schedule(Schedule $schedule): void
-{
-    $schedule->command('tasks:generate-daily')->dailyAt('00:05');
-}
+Schedule::command('tasks:generate-daily')->dailyAt('00:05');
 ```
 
 ---
@@ -524,12 +521,14 @@ export interface TaskInstance {
 // Loop semua user, generate instance untuk hari ini per timezone user
 
 // Juga bisa trigger on-demand saat user login
+// via listener Login + TaskSchedulerService::catchUpForUser()
 // jika last_active_date < today → generate missed days (maks 7 hari ke belakang)
 ```
 
 ```php
+// app/Jobs/DailyQuest/UpdateUserStatsJob.php
 // Streak update (job, dipanggil setelah complete/uncomplete)
-class UpdateUserStreak implements ShouldQueue
+class UpdateUserStatsJob implements ShouldQueue
 {
     public function handle(): void
     {

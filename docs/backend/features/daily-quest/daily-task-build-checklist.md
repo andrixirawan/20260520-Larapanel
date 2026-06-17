@@ -281,12 +281,12 @@ App
 
 #### Phase 2 — Core Logic
 
-- [ ] `TaskSchedulerService::generateForDate(User, Carbon)` — logika recurrence semua tipe
-- [ ] `TaskSchedulerService::shouldRunOn(Task, Carbon)` — cek apakah task perlu di-generate
-- [ ] Artisan command `tasks:generate-daily` (loop semua user, generate hari ini)
-- [ ] Register scheduler command di `routes/console.php` (daily 00:05)
-- [ ] Logic catch-up: saat user login, generate hari yang terlewat (maks 7 hari ke belakang)
-- [ ] `UpdateUserStatsJob` — update `total_points`, `current_streak`, `last_active_date` setelah complete/uncomplete
+- [x] `TaskSchedulerService::generateForDate(User, Carbon)` — logika recurrence semua tipe
+- [x] `TaskSchedulerService::shouldRunOn(Task, Carbon)` — cek apakah task perlu di-generate
+- [x] Artisan command `tasks:generate-daily` (loop semua user, generate hari ini)
+- [x] Register scheduler command di `routes/console.php` (daily 00:05)
+- [x] Logic catch-up: saat user login, generate hari yang terlewat (maks 7 hari ke belakang)
+- [x] `UpdateUserStatsJob` — update `total_points`, `current_streak`, `last_active_date` setelah complete/uncomplete
 
 #### Phase 3 — API / Controller
 

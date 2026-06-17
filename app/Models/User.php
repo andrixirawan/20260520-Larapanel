@@ -6,6 +6,7 @@ use App\Models\Concerns\HasPublicId;
 use App\Models\DailyQuest\Task;
 use App\Models\DailyQuest\TaskCategory;
 use App\Models\DailyQuest\TaskInstance;
+use App\Models\DailyQuest\UserDailyStat;
 use App\Models\Post\Post;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -136,6 +137,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function taskInstances(): HasMany
     {
         return $this->hasMany(TaskInstance::class);
+    }
+
+    /**
+     * @return HasMany<UserDailyStat, $this>
+     */
+    public function dailyStats(): HasMany
+    {
+        return $this->hasMany(UserDailyStat::class);
     }
 
     public function hasCompletedAllTasksOnDate(Carbon|string $date): bool
