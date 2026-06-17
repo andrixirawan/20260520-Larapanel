@@ -5,6 +5,7 @@ namespace App\Http\Controllers\DailyQuest;
 use App\Http\Controllers\Controller;
 use App\Jobs\DailyQuest\UpdateUserStatsJob;
 use App\Models\DailyQuest\TaskInstance;
+use App\Services\DailyQuest\TaskSchedulerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,10 @@ use Inertia\Inertia;
 
 class TaskInstanceController extends Controller
 {
+    public function __construct(
+        private readonly TaskSchedulerService $taskSchedulerService,
+    ) {}
+
     public function complete(Request $request, string $instance): RedirectResponse
     {
         $instance = $this->resolveOwnedInstance($request, $instance);
@@ -68,31 +73,51 @@ class TaskInstanceController extends Controller
 
     private function resolveOwnedInstance(Request $request, string $identifier): TaskInstance
     {
-        $today = now($request->user()->timezone)->toDateString();
+        $today = now($request->user()->timezone)->startOfDay();
         $taskId = $request->string('task_id')->toString();
 
+        $instance = $this->findOwnedInstanceForToday(
+            $request,
+            $identifier,
+            $taskId,
+            $today->toDateString(),
+        );
+
+        if (! $instance && $taskId !== '') {
+            $this->taskSchedulerService->generateForDate($request->user(), $today);
+
+            $instance = $this->findOwnedInstanceForToday(
+                $request,
+                $identifier,
+                $taskId,
+                $today->toDateString(),
+            );
+        }
+
+        abort_unless($instance instanceof TaskInstance, 404);
+
+        return $instance;
+    }
+
+    private function findOwnedInstanceForToday(
+        Request $request,
+        string $identifier,
+        string $taskId,
+        string $today,
+    ): ?TaskInstance {
         $instance = $request->user()
             ->taskInstances()
-            ->where(function ($query) use ($identifier, $taskId, $today): void {
+            ->whereDate('scheduled_date', $today)
+            ->where(function ($query) use ($identifier, $taskId): void {
                 $query
                     ->whereKey($identifier)
-                    ->orWhere(function ($query) use ($identifier, $today): void {
-                        $query
-                            ->where('task_id', $identifier)
-                            ->whereDate('scheduled_date', $today);
-                    });
+                    ->orWhere('task_id', $identifier);
 
                 if ($taskId !== '') {
-                    $query->orWhere(function ($query) use ($taskId, $today): void {
-                        $query
-                            ->where('task_id', $taskId)
-                            ->whereDate('scheduled_date', $today);
-                    });
+                    $query->orWhere('task_id', $taskId);
                 }
             })
             ->first();
-
-        abort_unless($instance instanceof TaskInstance, 404);
 
         return $instance;
     }

@@ -254,6 +254,54 @@ test('today task instance completion also accepts the task id for todays instanc
         ->and($instance->points_awarded)->toBe(30);
 });
 
+test('today task instance completion resolves stale instance ids through the submitted task id', function () {
+    Carbon::setTestNow('2026-06-18 03:30:00');
+
+    $user = User::factory()->create(['timezone' => 'Asia/Jakarta']);
+    $task = makeDailyQuestTask($user, ['points' => 35]);
+    $staleInstance = TaskInstance::query()->create([
+        'task_id' => $task->id,
+        'user_id' => $user->id,
+        'scheduled_date' => '2026-06-17',
+    ]);
+    $todayInstance = TaskInstance::query()->create([
+        'task_id' => $task->id,
+        'user_id' => $user->id,
+        'scheduled_date' => '2026-06-18',
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('instances.complete.post', $staleInstance), [
+            'task_id' => $task->id,
+        ])
+        ->assertRedirect();
+
+    expect($staleInstance->fresh()->completed_at)->toBeNull()
+        ->and($todayInstance->fresh()->completed_at)->not->toBeNull()
+        ->and($todayInstance->fresh()->points_awarded)->toBe(35);
+});
+
+test('today task instance completion generates todays instance when the submitted task id is valid', function () {
+    Carbon::setTestNow('2026-06-18 03:30:00');
+
+    $user = User::factory()->create(['timezone' => 'Asia/Jakarta']);
+    $task = makeDailyQuestTask($user, ['points' => 40]);
+
+    $this->actingAs($user)
+        ->post(route('instances.complete.post', 'stale-instance-id'), [
+            'task_id' => $task->id,
+        ])
+        ->assertRedirect();
+
+    $instance = TaskInstance::query()
+        ->where('task_id', $task->id)
+        ->whereDate('scheduled_date', '2026-06-18')
+        ->firstOrFail();
+
+    expect($instance->completed_at)->not->toBeNull()
+        ->and($instance->points_awarded)->toBe(40);
+});
+
 test('browser post endpoints mutate daily quest resources without method spoofing', function () {
     Carbon::setTestNow('2026-06-17 08:00:00');
 
