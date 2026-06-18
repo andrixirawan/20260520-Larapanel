@@ -9,6 +9,7 @@ use App\Services\DailyQuest\TaskSchedulerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class TaskInstanceController extends Controller
@@ -94,6 +95,16 @@ class TaskInstanceController extends Controller
             );
         }
 
+        if (! $instance) {
+            Log::warning('Daily quest instance could not be resolved for completion toggle.', [
+                'user_id' => $request->user()->id,
+                'route_instance' => $identifier,
+                'task_id' => $taskId,
+                'today' => $today->toDateString(),
+                'request_path' => $request->path(),
+            ]);
+        }
+
         abort_unless($instance instanceof TaskInstance, 404);
 
         return $instance;
@@ -127,6 +138,17 @@ class TaskInstanceController extends Controller
         abort_unless($instance->user_id === $request->user()->id, 404);
 
         $today = now($request->user()->timezone)->toDateString();
+
+        if ($instance->scheduled_date?->toDateString() !== $today) {
+            Log::warning('Daily quest instance is not mutable for the current user date.', [
+                'user_id' => $request->user()->id,
+                'instance_id' => $instance->id,
+                'task_id' => $instance->task_id,
+                'scheduled_date' => $instance->scheduled_date?->toDateString(),
+                'today' => $today,
+                'request_path' => $request->path(),
+            ]);
+        }
 
         abort_unless($instance->scheduled_date?->toDateString() === $today, 422);
     }

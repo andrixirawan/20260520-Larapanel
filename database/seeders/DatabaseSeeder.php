@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             UserSeeder::class,
             PostSeeder::class,
-            DailyQuestDemoSeeder::class,
+            // DailyQuestDemoSeeder::class,
         ]);
     }
 }
