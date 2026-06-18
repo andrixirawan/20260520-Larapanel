@@ -1,0 +1,1336 @@
+openapi: 3.1.0
+info:
+  title: Larapanel Daily Quest API
+  version: 1.0.0
+  summary: API contract for the mobile daily quest feature.
+  description: |
+    OpenAPI guide for the authenticated mobile `daily quest` feature.
+
+    Scope:
+    - dashboard summary for the app home overview
+    - today task instance list and completion flow
+    - task CRUD, pause, and duplicate flow
+    - history list and day detail flow
+    - profile summary and display name update
+    - category CRUD
+
+    Notes:
+    - every endpoint in this document requires mobile bearer auth
+    - mutable routes use user-scoped record lookup instead of implicit mutable binding
+    - task, category, and task instance identifiers use ULID string ids
+    - `today` and task instance mutations operate against the authenticated user's local date based on their timezone
+    - task instance notes update is available, but skip flow is not implemented yet
+servers:
+  - url: /api
+    description: Relative API base URL
+tags:
+  - name: Daily Quest Dashboard
+    description: Dashboard summary for streak, points, and weekly chart.
+  - name: Daily Quest Today
+    description: Today's generated task instances and completion flow.
+  - name: Daily Quest Tasks
+    description: Task management endpoints for the mobile app.
+  - name: Daily Quest History
+    description: History list and day detail for completed and pending instances.
+  - name: Daily Quest Profile
+    description: Profile stats and profile mutations for the daily quest feature.
+  - name: Daily Quest Categories
+    description: Category management endpoints.
+paths:
+  /mobile/daily-quest/dashboard:
+    get:
+      tags: [Daily Quest Dashboard]
+      operationId: getDailyQuestDashboard
+      summary: Get dashboard summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+              examples:
+                default:
+                  value:
+                    data:
+                      stats:
+                        streak:
+                          current: 4
+                          longest: 7
+                        points:
+                          total: 120
+                          today: 25
+                        today:
+                          date: '2026-06-18'
+                          total_tasks: 3
+                          completed_tasks: 1
+                        weekly_completion_rate: 67
+                        weekly_chart:
+                          - date: '2026-06-12'
+                            total_tasks: 2
+                            completed_tasks: 2
+                            points_earned: 20
+                          - date: '2026-06-18'
+                            total_tasks: 3
+                            completed_tasks: 1
+                            points_earned: 25
+                      date_range:
+                        today: '2026-06-18'
+                        week_start: '2026-06-15'
+                        week_end: '2026-06-21'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /mobile/daily-quest/today:
+    get:
+      tags: [Daily Quest Today]
+      operationId: getDailyQuestToday
+      summary: Get today's task instances
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Today payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodayResponse'
+              examples:
+                default:
+                  value:
+                    data:
+                      date: '2026-06-18'
+                      instances:
+                        - id: 01JYQTDQINSTANCE000000000001
+                          task_id: 01JYQTDTASK0000000000000001
+                          scheduled_date: '2026-06-18'
+                          completed_at: '2026-06-18T06:00:00.000000Z'
+                          points_awarded: 25
+                          notes: Completed before breakfast.
+                          task:
+                            id: 01JYQTDTASK0000000000000001
+                            name: Morning run
+                            description: 3 kilometers around the complex.
+                            icon: '🏃'
+                            color: '#22c55e'
+                            points: 25
+                            recurrence_type: daily
+                            recurrence_days: null
+                            recurrence_starts_at: null
+                            recurrence_ends_at: null
+                            recurrence_summary: Daily
+                            is_active: true
+                            deleted_at: null
+                            category:
+                              id: 01JYQTDTCATEGORY0000000001
+                              name: Health
+                              color: '#22c55e'
+                              icon: '💪'
+                              created_at: '2026-06-16T08:00:00.000000Z'
+                              updated_at: '2026-06-16T08:00:00.000000Z'
+                            created_at: '2026-06-16T08:00:00.000000Z'
+                            updated_at: '2026-06-16T08:00:00.000000Z'
+                          created_at: '2026-06-18T00:05:00.000000Z'
+                          updated_at: '2026-06-18T06:00:00.000000Z'
+                      stats:
+                        date: '2026-06-18'
+                        total_tasks: 3
+                        completed_tasks: 1
+                        points_earned: 25
+                        completion_rate: 33
+                      streak: 4
+                      all_completed: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /mobile/daily-quest/instances/{instance}/complete:
+    post:
+      tags: [Daily Quest Today]
+      operationId: completeDailyQuestInstance
+      summary: Complete today's task instance
+      description: |
+        Completes today's instance for the authenticated user.
+
+        Clients may send either:
+        - the real instance id in the path, or
+        - a stale/placeholder path id and the current `task_id` in the body
+
+        When `task_id` is provided, the backend can resolve or generate today's instance first.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInstanceToggleRequest'
+      responses:
+        '200':
+          description: Instance completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskInstanceMutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /mobile/daily-quest/instances/{instance}/uncomplete:
+    post:
+      tags: [Daily Quest Today]
+      operationId: uncompleteDailyQuestInstance
+      summary: Mark today's task instance as incomplete
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInstanceToggleRequest'
+      responses:
+        '200':
+          description: Instance marked incomplete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskInstanceMutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /mobile/daily-quest/instances/{instance}/notes:
+    patch:
+      tags: [Daily Quest Today]
+      operationId: updateDailyQuestInstanceNotes
+      summary: Update notes for today's task instance
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInstanceNotesRequest'
+      responses:
+        '200':
+          description: Instance notes updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskInstanceMutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /mobile/daily-quest/tasks:
+    get:
+      tags: [Daily Quest Tasks]
+      operationId: listDailyQuestTasks
+      summary: List tasks for the authenticated user
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TaskStatus'
+        - $ref: '#/components/parameters/Search'
+      responses:
+        '200':
+          description: Task list payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskIndexResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Daily Quest Tasks]
+      operationId: createDailyQuestTask
+      summary: Create a task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskMutationRequest'
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskMutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /mobile/daily-quest/tasks/{task}:
+    get:
+      tags: [Daily Quest Tasks]
+      operationId: showDailyQuestTask
+      summary: Get one task with recent instances and supporting form metadata
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Task detail payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskShowResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Daily Quest Tasks]
+      operationId: updateDailyQuestTask
+      summary: Update a task
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskMutationRequest'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskMutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Daily Quest Tasks]
+      operationId: archiveDailyQuestTask
+      summary: Soft delete a task
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Task archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              examples:
+                default:
+                  value:
+                    message: Task archived.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /mobile/daily-quest/tasks/{task}/pause:
+    post:
+      tags: [Daily Quest Tasks]
+      operationId: toggleDailyQuestTaskPause
+      summary: Pause or resume a task
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Pause state toggled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskMutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /mobile/daily-quest/tasks/{task}/duplicate:
+    post:
+      tags: [Daily Quest Tasks]
+      operationId: duplicateDailyQuestTask
+      summary: Duplicate a task
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '201':
+          description: Task duplicated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskMutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /mobile/daily-quest/history:
+    get:
+      tags: [Daily Quest History]
+      operationId: listDailyQuestHistory
+      summary: List grouped history days with monthly calendar summary
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Month'
+        - $ref: '#/components/parameters/TaskIdQuery'
+        - $ref: '#/components/parameters/CategoryIdQuery'
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: History list payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryIndexResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /mobile/daily-quest/history/{date}:
+    get:
+      tags: [Daily Quest History]
+      operationId: showDailyQuestHistoryDay
+      summary: Show one history day
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/HistoryDate'
+        - $ref: '#/components/parameters/TaskIdQuery'
+        - $ref: '#/components/parameters/CategoryIdQuery'
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: History day detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryShowResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /mobile/daily-quest/profile:
+    get:
+      tags: [Daily Quest Profile]
+      operationId: showDailyQuestProfile
+      summary: Get profile summary for daily quest
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /mobile/daily-quest/profile/display-name:
+    patch:
+      tags: [Daily Quest Profile]
+      operationId: updateDailyQuestDisplayName
+      summary: Update profile display name
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisplayNameRequest'
+      responses:
+        '200':
+          description: Display name updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisplayNameResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /mobile/daily-quest/categories:
+    get:
+      tags: [Daily Quest Categories]
+      operationId: listDailyQuestCategories
+      summary: List categories
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Category list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryIndexResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Daily Quest Categories]
+      operationId: createDailyQuestCategory
+      summary: Create a category
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryMutationRequest'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryMutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /mobile/daily-quest/categories/{category}:
+    patch:
+      tags: [Daily Quest Categories]
+      operationId: updateDailyQuestCategory
+      summary: Update a category
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryMutationRequest'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryMutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Daily Quest Categories]
+      operationId: deleteDailyQuestCategory
+      summary: Delete a category
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      responses:
+        '200':
+          description: Category deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              examples:
+                default:
+                  value:
+                    message: Category deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+      description: Mobile auth bearer token.
+  parameters:
+    Search:
+      name: search
+      in: query
+      required: false
+      description: Partial match filter against task name or description.
+      schema:
+        type: string
+    TaskStatus:
+      name: status
+      in: query
+      required: false
+      description: Task list scope for active, paused, archived, or all tasks.
+      schema:
+        type: string
+        enum: [active, paused, archived, all]
+        default: active
+    Month:
+      name: month
+      in: query
+      required: false
+      description: Calendar month in `YYYY-MM` format.
+      schema:
+        type: string
+        pattern: '^\d{4}-\d{2}$'
+        example: '2026-06'
+    TaskId:
+      name: task
+      in: path
+      required: true
+      description: Task ULID.
+      schema:
+        type: string
+    InstanceId:
+      name: instance
+      in: path
+      required: true
+      description: Task instance ULID.
+      schema:
+        type: string
+    CategoryId:
+      name: category
+      in: path
+      required: true
+      description: Task category ULID.
+      schema:
+        type: string
+    TaskIdQuery:
+      name: task_id
+      in: query
+      required: false
+      description: Filter history by task ULID.
+      schema:
+        type: string
+    CategoryIdQuery:
+      name: category_id
+      in: query
+      required: false
+      description: Filter history by category ULID.
+      schema:
+        type: string
+    FromDate:
+      name: from
+      in: query
+      required: false
+      description: Start date filter in `YYYY-MM-DD`.
+      schema:
+        type: string
+        format: date
+    ToDate:
+      name: to
+      in: query
+      required: false
+      description: End date filter in `YYYY-MM-DD`.
+      schema:
+        type: string
+        format: date
+    HistoryDate:
+      name: date
+      in: path
+      required: true
+      description: History date in `YYYY-MM-DD`.
+      schema:
+        type: string
+        format: date
+  responses:
+    Unauthorized:
+      description: Authentication is required or token is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessageResponse'
+          examples:
+            default:
+              value:
+                message: Unauthenticated.
+    NotFound:
+      description: Requested resource was not found in the authenticated user's scope.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessageResponse'
+          examples:
+            default:
+              value:
+                message: Not Found
+    ValidationError:
+      description: Request validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+  schemas:
+    DateRange:
+      type: object
+      required: [today, week_start, week_end]
+      properties:
+        today:
+          type: string
+          format: date
+        week_start:
+          type: string
+          format: date
+        week_end:
+          type: string
+          format: date
+    RecurrenceTypeOption:
+      type: object
+      required: [value, label]
+      properties:
+        value:
+          type: string
+          enum: [daily, specific_days, one_time, x_days, date_range]
+        label:
+          type: string
+    Category:
+      type: object
+      required: [id, name, color, icon, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          example: 01JYQTDTCATEGORY0000000001
+        name:
+          type: string
+          maxLength: 255
+          example: Health
+        color:
+          type: string
+          nullable: true
+          maxLength: 24
+          example: '#22c55e'
+        icon:
+          type: string
+          nullable: true
+          maxLength: 64
+          example: '💪'
+        tasks_count:
+          type: integer
+          nullable: true
+          example: 3
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+    Task:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - icon
+        - color
+        - points
+        - recurrence_type
+        - recurrence_days
+        - recurrence_starts_at
+        - recurrence_ends_at
+        - recurrence_summary
+        - is_active
+        - deleted_at
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          example: 01JYQTDTASK0000000000000001
+        name:
+          type: string
+          maxLength: 255
+          example: Morning run
+        description:
+          type: string
+          nullable: true
+          example: 3 kilometers around the complex.
+        icon:
+          type: string
+          nullable: true
+          maxLength: 64
+          example: '🏃'
+        color:
+          type: string
+          nullable: true
+          maxLength: 24
+          example: '#22c55e'
+        points:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          example: 25
+        recurrence_type:
+          type: string
+          enum: [daily, specific_days, one_time, x_days, date_range]
+        recurrence_days:
+          type: array
+          nullable: true
+          items:
+            type: string
+            enum: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        recurrence_starts_at:
+          type: string
+          format: date
+          nullable: true
+        recurrence_ends_at:
+          type: string
+          format: date
+          nullable: true
+        recurrence_summary:
+          type: string
+          example: Daily
+        is_active:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        category:
+          allOf:
+            - $ref: '#/components/schemas/Category'
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+    TaskInstance:
+      type: object
+      required:
+        - id
+        - task_id
+        - scheduled_date
+        - completed_at
+        - points_awarded
+        - notes
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          example: 01JYQTDQINSTANCE000000000001
+        task_id:
+          type: string
+          example: 01JYQTDTASK0000000000000001
+        scheduled_date:
+          type: string
+          format: date
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        points_awarded:
+          type: integer
+          nullable: true
+          example: 25
+        notes:
+          type: string
+          nullable: true
+        task:
+          allOf:
+            - $ref: '#/components/schemas/Task'
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+    DaySummary:
+      type: object
+      required: [date, total_tasks, completed_tasks, points_earned, completion_rate]
+      properties:
+        date:
+          type: string
+          format: date
+          nullable: true
+        total_tasks:
+          type: integer
+        completed_tasks:
+          type: integer
+        points_earned:
+          type: integer
+        completion_rate:
+          type: integer
+          minimum: 0
+          maximum: 100
+    WeeklyChartItem:
+      type: object
+      required: [date, total_tasks, completed_tasks, points_earned]
+      properties:
+        date:
+          type: string
+          format: date
+        total_tasks:
+          type: integer
+        completed_tasks:
+          type: integer
+        points_earned:
+          type: integer
+    DashboardStats:
+      type: object
+      required: [streak, points, today, weekly_completion_rate, weekly_chart]
+      properties:
+        streak:
+          type: object
+          required: [current, longest]
+          properties:
+            current:
+              type: integer
+            longest:
+              type: integer
+        points:
+          type: object
+          required: [total, today]
+          properties:
+            total:
+              type: integer
+            today:
+              type: integer
+        today:
+          type: object
+          required: [date, total_tasks, completed_tasks]
+          properties:
+            date:
+              type: string
+              format: date
+            total_tasks:
+              type: integer
+            completed_tasks:
+              type: integer
+        weekly_completion_rate:
+          type: integer
+          minimum: 0
+          maximum: 100
+        weekly_chart:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeeklyChartItem'
+    TaskStatusOption:
+      type: object
+      required: [value, label]
+      properties:
+        value:
+          type: string
+          enum: [active, paused, archived, all]
+        label:
+          type: string
+    TodayPayload:
+      type: object
+      required: [date, instances, stats, streak, all_completed]
+      properties:
+        date:
+          type: string
+          format: date
+        instances:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskInstance'
+        stats:
+          $ref: '#/components/schemas/DaySummary'
+        streak:
+          type: integer
+        all_completed:
+          type: boolean
+    DashboardPayload:
+      type: object
+      required: [stats, date_range]
+      properties:
+        stats:
+          $ref: '#/components/schemas/DashboardStats'
+        date_range:
+          $ref: '#/components/schemas/DateRange'
+    HistoryDay:
+      type: object
+      required: [summary, instances]
+      properties:
+        summary:
+          $ref: '#/components/schemas/DaySummary'
+        instances:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskInstance'
+    CalendarDaySummary:
+      type: object
+      required: [date, total_tasks, completed_tasks, points_earned, completion_rate]
+      properties:
+        date:
+          type: string
+          format: date
+          nullable: true
+        total_tasks:
+          type: integer
+        completed_tasks:
+          type: integer
+        points_earned:
+          type: integer
+        completion_rate:
+          type: integer
+          minimum: 0
+          maximum: 100
+    HistoryFilters:
+      type: object
+      required: [task_id, category_id, from, to]
+      properties:
+        task_id:
+          type: string
+        category_id:
+          type: string
+        from:
+          type: string
+        to:
+          type: string
+    ProfileStats:
+      type: object
+      required: [streak, points, tasks, categories, weekly_completion_rate]
+      properties:
+        streak:
+          type: object
+          required: [current, longest]
+          properties:
+            current:
+              type: integer
+            longest:
+              type: integer
+        points:
+          type: object
+          required: [total]
+          properties:
+            total:
+              type: integer
+        tasks:
+          type: object
+          required: [completed, active]
+          properties:
+            completed:
+              type: integer
+            active:
+              type: integer
+        categories:
+          type: object
+          required: [total]
+          properties:
+            total:
+              type: integer
+        weekly_completion_rate:
+          type: integer
+          minimum: 0
+          maximum: 100
+    DailyQuestProfileUser:
+      type: object
+      required: [public_id, name, avatar, timezone]
+      properties:
+        public_id:
+          type: string
+        name:
+          type: string
+        avatar:
+          type: string
+          nullable: true
+          format: uri
+        timezone:
+          type: string
+          example: Asia/Jakarta
+    TaskMutationRequest:
+      type: object
+      required: [name, points, recurrence_type]
+      properties:
+        category_id:
+          type: string
+          nullable: true
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+          maxLength: 64
+        color:
+          type: string
+          nullable: true
+          maxLength: 24
+        points:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        recurrence_type:
+          type: string
+          enum: [daily, specific_days, one_time, x_days, date_range]
+        recurrence_days:
+          type: array
+          nullable: true
+          items:
+            type: string
+            enum: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+        recurrence_starts_at:
+          type: string
+          format: date
+          nullable: true
+        recurrence_ends_at:
+          type: string
+          format: date
+          nullable: true
+        is_active:
+          type: boolean
+          description: Optional on update. When omitted, existing task state is preserved.
+      additionalProperties: false
+    CategoryMutationRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        color:
+          type: string
+          nullable: true
+          maxLength: 24
+        icon:
+          type: string
+          nullable: true
+          maxLength: 64
+      additionalProperties: false
+    TaskInstanceToggleRequest:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: Optional task ULID used to resolve or generate today's instance.
+      additionalProperties: false
+    TaskInstanceNotesRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+          nullable: true
+          maxLength: 2000
+      additionalProperties: false
+    DisplayNameRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+      additionalProperties: false
+    TaskIndexResponse:
+      type: object
+      required: [data, filters, statuses, categories, recurrence_types]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        filters:
+          type: object
+          required: [status, search]
+          properties:
+            status:
+              type: string
+              enum: [active, paused, archived, all]
+            search:
+              type: string
+        statuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskStatusOption'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        recurrence_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurrenceTypeOption'
+    TaskShowResponse:
+      type: object
+      required: [data, recent_instances, categories, recurrence_types]
+      properties:
+        data:
+          $ref: '#/components/schemas/Task'
+        recent_instances:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskInstance'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        recurrence_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurrenceTypeOption'
+    TaskMutationResponse:
+      type: object
+      required: [message, data]
+      properties:
+        message:
+          type: string
+          example: Task created.
+        data:
+          $ref: '#/components/schemas/Task'
+    TaskInstanceMutationResponse:
+      type: object
+      required: [message, data]
+      properties:
+        message:
+          type: string
+          example: Task completed.
+        data:
+          $ref: '#/components/schemas/TaskInstance'
+    DashboardResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DashboardPayload'
+    TodayResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/TodayPayload'
+    HistoryIndexResponse:
+      type: object
+      required: [data, calendar, month, filters, tasks, categories]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryDay'
+        calendar:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarDaySummary'
+        month:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+        filters:
+          $ref: '#/components/schemas/HistoryFilters'
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+    HistoryShowResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [date, summary, instances]
+          properties:
+            date:
+              type: string
+              format: date
+            summary:
+              $ref: '#/components/schemas/DaySummary'
+            instances:
+              type: array
+              items:
+                $ref: '#/components/schemas/TaskInstance'
+    ProfileResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [user, stats, date_range]
+          properties:
+            user:
+              $ref: '#/components/schemas/DailyQuestProfileUser'
+            stats:
+              $ref: '#/components/schemas/ProfileStats'
+            date_range:
+              $ref: '#/components/schemas/DateRange'
+    DisplayNameResponse:
+      type: object
+      required: [message, data]
+      properties:
+        message:
+          type: string
+          example: Display name updated.
+        data:
+          type: object
+          required: [name]
+          properties:
+            name:
+              type: string
+    CategoryIndexResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+    CategoryMutationResponse:
+      type: object
+      required: [message, data]
+      properties:
+        message:
+          type: string
+          example: Category created.
+        data:
+          $ref: '#/components/schemas/Category'
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ErrorMessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ValidationErrorResponse:
+      type: object
+      required: [message, errors]
+      properties:
+        message:
+          type: string
+          example: The given data was invalid.
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            name:
+              - The name field is required.
+            recurrence_days:
+              - Select at least one recurrence day.

@@ -31,4 +31,5 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
     });
 });
 
+require __DIR__.'/api/daily-quest.php';
 require __DIR__.'/api/post.php';
