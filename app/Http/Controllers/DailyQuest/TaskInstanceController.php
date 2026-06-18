@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\DailyQuest\UpdateUserStatsJob;
 use App\Models\DailyQuest\TaskInstance;
 use App\Services\DailyQuest\TaskSchedulerService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -105,7 +106,16 @@ class TaskInstanceController extends Controller
             ]);
         }
 
-        abort_unless($instance instanceof TaskInstance, 404);
+        if (! $instance instanceof TaskInstance) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Task instance not found for current user/date.',
+                'debug' => [
+                    'route_instance' => $identifier,
+                    'task_id' => $taskId,
+                    'today' => $today->toDateString(),
+                ],
+            ], 422));
+        }
 
         return $instance;
     }
@@ -135,7 +145,16 @@ class TaskInstanceController extends Controller
 
     private function ensureOwnedAndMutable(Request $request, TaskInstance $instance): void
     {
-        abort_unless($instance->user_id === $request->user()->id, 404);
+        if ($instance->user_id !== $request->user()->id) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Task instance does not belong to the authenticated user.',
+                'debug' => [
+                    'instance_id' => $instance->id,
+                    'instance_user_id' => $instance->user_id,
+                    'auth_user_id' => $request->user()->id,
+                ],
+            ], 422));
+        }
 
         $today = now($request->user()->timezone)->toDateString();
 
@@ -148,8 +167,16 @@ class TaskInstanceController extends Controller
                 'today' => $today,
                 'request_path' => $request->path(),
             ]);
-        }
 
-        abort_unless($instance->scheduled_date?->toDateString() === $today, 422);
+            throw new HttpResponseException(response()->json([
+                'message' => 'Task instance is not mutable for the current user date.',
+                'debug' => [
+                    'instance_id' => $instance->id,
+                    'task_id' => $instance->task_id,
+                    'scheduled_date' => $instance->scheduled_date?->toDateString(),
+                    'today' => $today,
+                ],
+            ], 422));
+        }
     }
 }
