@@ -28,6 +28,7 @@ class TaskInstance extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'user_id' => 'integer',
         'scheduled_date' => 'date',
         'completed_at' => 'datetime',
         'points_awarded' => 'integer',

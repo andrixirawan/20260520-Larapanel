@@ -145,7 +145,7 @@ class TaskInstanceController extends Controller
 
     private function ensureOwnedAndMutable(Request $request, TaskInstance $instance): void
     {
-        if ($instance->user_id !== $request->user()->id) {
+        if ((int) $instance->user_id !== (int) $request->user()->id) {
             throw new HttpResponseException(response()->json([
                 'message' => 'Task instance does not belong to the authenticated user.',
                 'debug' => [

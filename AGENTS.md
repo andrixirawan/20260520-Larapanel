@@ -121,6 +121,18 @@ the route parameter as a string in the controller and explicitly resolve the
 record through the authenticated user's scoped relationship or an explicit query.
 Return 404 when the scoped query cannot find the record.
 
+When mutable routes resolve user-owned records, prefer ownership enforcement in
+the query itself, for example `$request->user()->relation()->whereKey(...)`,
+instead of fetching first and comparing owner IDs manually afterward. If a
+manual identity check is still needed, never rely on strict comparison between
+raw model attributes and auth IDs unless the model cast is explicit and aligned.
+
+For every Eloquent model, add casts for integer foreign keys and counters such
+as `user_id`, `created_by`, `updated_by`, `points_awarded`, or similar numeric
+columns. This avoids environment-specific mismatches where MySQL returns `"6"`
+while auth state provides `6`, which can break ownership checks and Inertia
+flows in production.
+
 ## Database Structure
 
 Group database files by feature.
